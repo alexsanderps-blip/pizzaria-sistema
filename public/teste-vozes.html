@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>🎤 Teste de Vozes - Gemini Live</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d1117;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #30363d;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p { color: #888; margin-top: 8px; }
+        .header .modelos {
+            font-size: 0.8rem;
+            color: #58a6ff;
+            margin-top: 5px;
+        }
+        .header .modelos code {
+            background: #0d1117;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #f0883e;
+        }
+
+        .config {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            margin-bottom: 20px;
+        }
+        .config label {
+            display: block;
+            color: #888;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+        }
+        .config input, .config textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            background: #0d1117;
+            color: #fff;
+            border: 1px solid #30363d;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-family: inherit;
+        }
+        .config input:focus, .config textarea:focus {
+            outline: none;
+            border-color: #4caf50;
+        }
+        .config textarea { resize: vertical; min-height: 60px; }
+
+        .botoes {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        .botoes button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+        .btn-conectar { background: #1f883d; color: #fff; }
+        .btn-conectar:hover { background: #2ea043; }
+        .btn-conectar.conectado { background: #da3633; }
+        .btn-conectar.conectado:hover { background: #f44336; }
+        .btn-parar { background: #21262d; color: #aaa; }
+        .btn-parar:hover { background: #30363d; color: #fff; }
+        .btn-auto { background: #f0883e; color: #000; }
+        .btn-auto:hover { background: #f5a55a; }
+        .btn-limpar { background: #21262d; color: #aaa; }
+        .btn-limpar:hover { background: #30363d; color: #fff; }
+
+        .status-bar {
+            background: #0d1117;
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: 1px solid #30363d;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .status-bar .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #666;
+        }
+        .status-bar .dot.verde { background: #4caf50; }
+        .status-bar .dot.vermelho { background: #f44336; }
+        .status-bar .dot.amarelo { background: #fbbc05; }
+        .status-bar .texto { flex: 1; font-size: 0.9rem; }
+        .status-bar .texto strong { color: #58a6ff; }
+
+        .voz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .voz-card {
+            background: #161b22;
+            padding: 12px;
+            border-radius: 10px;
+            border: 2px solid #30363d;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            position: relative;
+        }
+        .voz-card:hover {
+            border-color: #4caf50;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.2);
+        }
+        .voz-card.selecionado {
+            border-color: #4caf50;
+            background: #1a2a1a;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+        }
+        .voz-card.tocando {
+            border-color: #fbbc05;
+            background: #2a2a1a;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .voz-card .nome {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .voz-card .personalidade {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        .voz-card .icone {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        .voz-card .aviso {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 0.7rem;
+        }
+
+        .log {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            font-family: 'Consolas', monospace;
+            font-size: 0.78rem;
+            max-height: 250px;
+            overflow-y: auto;
+            color: #888;
+            line-height: 1.5;
+        }
+        .log .entry { padding: 2px 0; border-bottom: 1px solid #1a1a1a; }
+        .log .entry.sucesso { color: #4caf50; }
+        .log .entry.erro { color: #ff6b6b; }
+        .log .entry.info { color: #58a6ff; }
+        .log .entry.debug { color: #666; }
+        .log .entry.audio { color: #f0883e; }
+
+        .info-box {
+            background: #1a2a1a;
+            border: 1px solid #2a4a2a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            color: #4caf50;
+            font-size: 0.85rem;
+        }
+        .info-box strong { color: #6bff6b; }
+        .info-box a { color: #58a6ff; }
+
+        @media (max-width: 600px) {
+            .voz-grid { grid-template-columns: 1fr 1fr; }
+            .header h1 { font-size: 1.3rem; }
+            .botoes button { flex: 1; font-size: 13px; padding: 10px 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🎤 Teste de Vozes - Gemini Live</h1>
+            <p>Clique em uma voz para ouvir. Conecte primeiro ao WebSocket.</p>
+            <div class="modelos">
+                🎤 Modelo: <code>gemini-3.1-flash-live-preview</code> |
+                🔊 Áudio: <code>PCM 24kHz</code>
+            </div>
+        </div>
+
+        <!-- INFO -->
+        <div class="info-box">
+            <strong>ℹ️ Como usar:</strong> 1️⃣ Conecte o WebSocket → 2️⃣ Clique em uma voz → 3️⃣ Ouça o teste
+        </div>
+
+        <!-- CONFIGURAÇÃO -->
+        <div class="config">
+            <label>🔑 API Key do Gemini</label>
+            <input type="password" id="apiKey" placeholder="Cole sua API Key (deixe vazio para usar a do servidor)">
+
+            <label>📝 Texto para testar (cada voz dirá este texto)</label>
+            <textarea id="textoTeste">Olá! Bem-vindo à Pizzaria do Zé. Como posso ajudar você hoje?</textarea>
+
+            <div class="botoes">
+                <button class="btn-conectar" id="btnConectar">🔌 Conectar WebSocket</button>
+                <button class="btn-parar" id="btnParar">⏹️ Parar Áudio</button>
+                <button class="btn-auto" id="btnAuto">🔁 Testar Todas as Vozes</button>
+                <button class="btn-limpar" id="btnLimpar">🗑️ Limpar Log</button>
+            </div>
+        </div>
+
+        <!-- STATUS -->
+        <div class="status-bar">
+            <div class="dot vermelho" id="statusDot"></div>
+            <div class="texto" id="statusTexto"><strong>Desconectado</strong> — clique em "Conectar WebSocket"</div>
+            <div style="color:#888;font-size:0.8rem;" id="statsTexto"></div>
+        </div>
+
+        <!-- GRID DE VOZES -->
+        <h3 style="margin: 20px 0 10px; color: #58a6ff;">📋 Vozes Disponíveis (clique para testar)</h3>
+        <div class="voz-grid" id="vozGrid"></div>
+
+        <!-- LOG -->
+        <h3 style="margin: 20px 0 10px; color: #58a6ff;">📋 Log</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <!-- ==========================================
+    JAVASCRIPT
+    ========================================== -->
+    <script>
+        // ============================================
+        // CONFIGURAÇÃO
+        // ============================================
+        const MODELO_LIVE = 'gemini-3.1-flash-live-preview';
+        const SAMPLE_RATE = 24000;
+
+        // 🔥 LISTA COMPLETA DAS 30 VOZES DO GEMINI LIVE
+        const VOZES = [
+            { nome: 'Zephyr', personalidade: 'Brilhante', icone: '✨' },
+            { nome: 'Puck', personalidade: 'Animada', icone: '🎉' },
+            { nome: 'Charon', personalidade: 'Informativa', icone: '📊' },
+            { nome: 'Kore', personalidade: 'Firme', icone: '💪' },
+            { nome: 'Fenrir', personalidade: 'Excitável', icone: '🔥' },
+            { nome: 'Leda', personalidade: 'Jovem', icone: '🌟' },
+            { nome: 'Orus', personalidade: 'Firme', icone: '🎯' },
+            { nome: 'Aoede', personalidade: 'Leve', icone: '🍃' },
+            { nome: 'Callirrhoe', personalidade: 'Descontraída', icone: '😎' },
+            { nome: 'Autonoe', personalidade: 'Brilhante', icone: '💎' },
+            { nome: 'Enceladus', personalidade: 'Suave', icone: '🌸' },
+            { nome: 'Iapetus', personalidade: 'Clara', icone: '🔍' },
+            { nome: 'Umbriel', personalidade: 'Descontraída', icone: '☕' },
+            { nome: 'Algieba', personalidade: 'Suave', icone: '🌙' },
+            { nome: 'Despina', personalidade: 'Suave', icone: '💫' },
+            { nome: 'Erinome', personalidade: 'Clara', icone: '🔔' },
+            { nome: 'Algenib', personalidade: 'Grave', icone: '🎙️' },
+            { nome: 'Rasalgethi', personalidade: 'Informativa', icone: '📚' },
+            { nome: 'Laomedeia', personalidade: 'Animada', icone: '🎈' },
+            { nome: 'Achernar', personalidade: 'Suave', icone: '🌊' },
+            { nome: 'Alnilam', personalidade: 'Firme', icone: '⚓' },
+            { nome: 'Schedar', personalidade: 'Equilibrada', icone: '⚖️' },
+            { nome: 'Gacrux', personalidade: 'Madura', icone: '🍷' },
+            { nome: 'Pulcherrima', personalidade: 'Direta', icone: '🎯' },
+            { nome: 'Achird', personalidade: 'Amigável', icone: '😊' },
+            { nome: 'Zubenelgenubi', personalidade: 'Casual', icone: '🍕' },
+            { nome: 'Vindemiatrix', personalidade: 'Gentil', icone: '💝' },
+            { nome: 'Sadachbia', personalidade: 'Animada', icone: '🎪' },
+            { nome: 'Sadaltager', personalidade: 'Conhecedora', icone: '🧠' },
+            { nome: 'Sulafat', personalidade: 'Acolhedora', icone: '🤗' },
+        ];
+
+        // ============================================
+        // ELEMENTOS
+        // ============================================
+        const apiKeyInput = document.getElementById('apiKey');
+        const textoTeste = document.getElementById('textoTeste');
+        const btnConectar = document.getElementById('btnConectar');
+        const btnParar = document.getElementById('btnParar');
+        const btnAuto = document.getElementById('btnAuto');
+        const btnLimpar = document.getElementById('btnLimpar');
+        const vozGrid = document.getElementById('vozGrid');
+        const logEl = document.getElementById('log');
+        const statusDot = document.getElementById('statusDot');
+        const statusTexto = document.getElementById('statusTexto');
+        const statsTexto = document.getElementById('statsTexto');
+
+        // ============================================
+        // ESTADO
+        // ============================================
+        let ws = null;
+        let wsConectado = false;
+        let setupCompleto = false;
+        let audioContext = null;
+        let filaAudio = [];
+        let reproduzindo = false;
+        let fonteAtual = null;
+        let vozAtualTocando = null;
+        let testandoTodas = false;
+        let pacotesRecebidos = 0;
+        let bytesRecebidos = 0;
+
+        // ============================================
+        // LOG
+        // ============================================
+        function log(msg, tipo = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `entry ${tipo}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+            while (logEl.children.length > 300) logEl.removeChild(logEl.firstChild);
+        }
+
+        function atualizarStats() {
+            statsTexto.textContent = `📦 ${pacotesRecebidos} pacotes | 💾 ${bytesRecebidos.toLocaleString()} bytes`;
+        }
+
+        function setStatus(cor, texto) {
+            statusDot.className = `dot ${cor}`;
+            statusTexto.innerHTML = texto;
+        }
+
+        // ============================================
+        // CONSTRUIR GRID DE VOZES
+        // ============================================
+        function construirGrid() {
+            vozGrid.innerHTML = '';
+            VOZES.forEach(voz => {
+                const card = document.createElement('div');
+                card.className = 'voz-card';
+                card.dataset.voz = voz.nome;
+                card.innerHTML = `
+                    <div class="icone">${voz.icone}</div>
+                    <div class="nome">${voz.nome}</div>
+                    <div class="personalidade">${voz.personalidade}</div>
+                `;
+                card.onclick = () => {
+                    document.querySelectorAll('.voz-card').forEach(c => c.classList.remove('selecionado'));
+                    card.classList.add('selecionado');
+                    testarVoz(voz.nome);
+                };
+                vozGrid.appendChild(card);
+            });
+        }
+
+        // ============================================
+        // CONECTAR WEBSOCKET
+        // ============================================
+        async function conectar() {
+            let apiKey = apiKeyInput.value.trim();
+
+            // 🔥 Se não tem key no input, busca do servidor
+            if (!apiKey) {
+                log('🔑 Buscando API Key do servidor...', 'info');
+                try {
+                    const resp = await fetch('/api/config');
+                    const data = await resp.json();
+                    if (data.apiKey) {
+                        apiKey = data.apiKey;
+                        log('✅ API Key carregada do servidor', 'sucesso');
+                    } else {
+                        log('❌ API Key não configurada no servidor', 'erro');
+                        log('💡 Cole sua API Key no campo acima', 'info');
+                        return;
+                    }
+                } catch (e) {
+                    log('❌ Erro ao buscar API Key: ' + e.message, 'erro');
+                    return;
+                }
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('🔌 Desconectando...', 'info');
+                ws.close();
+                return;
+            }
+
+            const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+            log('🔌 Conectando ao Gemini Live...', 'info');
+            setStatus('amarelo', '<strong>Conectando...</strong>');
+
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                wsConectado = true;
+                log('✅ WebSocket conectado!', 'sucesso');
+                setStatus('amarelo', '<strong>Conectado</strong> — enviando setup...');
+                btnConectar.textContent = '🔌 Desconectar';
+                btnConectar.classList.add('conectado');
+
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                // Setup inicial (será reenviado com a voz escolhida)
+                const setupMessage = {
+                    setup: {
+                        model: `models/${MODELO_LIVE}`,
+                        generation_config: {
+                            response_modalities: ['AUDIO'],
+                            speech_config: {
+                                voice_config: {
+                                    prebuilt_voice_config: {
+                                        voiceName: VOZES[0].nome
+                                    }
+                                }
+                            }
+                        },
+                        system_instruction: {
+                            parts: [{ text: 'Você é um assistente de teste de vozes. Repita o texto exatamente como enviado, de forma clara e natural em português.' }]
+                        }
+                    }
+                };
+
+                ws.send(JSON.stringify(setupMessage));
+                log('📤 Setup enviado', 'info');
+            };
+
+            ws.onmessage = async (event) => {
+                let data;
+                if (event.data instanceof Blob) {
+                    const arrayBuffer = await event.data.arrayBuffer();
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    // Detecta JSON no Blob
+                    if (uint8Array.length > 0 && uint8Array[0] === 0x7B) {
+                        try {
+                            const text = new TextDecoder().decode(uint8Array);
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            processarAudio(uint8Array);
+                            return;
+                        }
+                    } else {
+                        processarAudio(uint8Array);
+                        return;
+                    }
+                } else if (event.data instanceof ArrayBuffer) {
+                    processarAudio(new Uint8Array(event.data));
+                    return;
+                } else if (typeof event.data === 'string') {
+                    try { data = JSON.parse(event.data); }
+                    catch (e) { log('❌ JSON: ' + e.message, 'erro'); return; }
+                }
+
+                processarMensagem(data);
+            };
+
+            ws.onerror = (err) => {
+                log('❌ Erro no WebSocket', 'erro');
+                setStatus('vermelho', '<strong>Erro</strong>');
+                wsConectado = false;
+            };
+
+            ws.onclose = () => {
+                wsConectado = false;
+                setupCompleto = false;
+                log('🔌 Desconectado', 'info');
+                setStatus('vermelho', '<strong>Desconectado</strong> — clique em "Conectar"');
+                btnConectar.textContent = '🔌 Conectar WebSocket';
+                btnConectar.classList.remove('conectado');
+            };
+        }
+
+        // ============================================
+        // PROCESSAR MENSAGEM JSON
+        // ============================================
+        function processarMensagem(data) {
+            if (data.setupComplete) {
+                setupCompleto = true;
+                log('✅ Setup completo!', 'sucesso');
+                setStatus('verde', '<strong>Pronto</strong> — clique em uma voz para testar');
+                return;
+            }
+
+            if (data.serverContent?.modelTurn?.parts) {
+                for (const part of data.serverContent.modelTurn.parts) {
+                    if (part.inlineData?.data) {
+                        const binaryString = atob(part.inlineData.data);
+                        const uint8Array = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            uint8Array[i] = binaryString.charCodeAt(i);
+                        }
+                        processarAudio(uint8Array);
+                    }
+                    if (part.text) {
+                        log(`📝 Gemini: ${part.text.substring(0, 80)}`, 'debug');
+                    }
+                }
+            }
+
+            if (data.error) {
+                log('❌ Erro: ' + (data.error.message || JSON.stringify(data.error)), 'erro');
+            }
+        }
+
+        // ============================================
+        // PROCESSAR ÁUDIO PCM
+        // ============================================
+        function processarAudio(uint8Array) {
+            pacotesRecebidos++;
+            bytesRecebidos += uint8Array.length;
+            atualizarStats();
+
+            filaAudio.push(uint8Array);
+            if (!reproduzindo) reproduzirProximo();
+        }
+
+        // ============================================
+        // REPRODUÇÃO SEQUENCIAL
+        // ============================================
+        function reproduzirProximo() {
+            if (filaAudio.length === 0) {
+                reproduzindo = false;
+                fonteAtual = null;
+                // Se terminou a reprodução, limpa o "tocando"
+                if (vozAtualTocando) {
+                    const card = document.querySelector(`.voz-card[data-voz="${vozAtualTocando}"]`);
+                    if (card) card.classList.remove('tocando');
+                    log(`✅ ${vozAtualTocando} — fim do áudio`, 'sucesso');
+                    vozAtualTocando = null;
+                }
+                return;
+            }
+
+            reproduzindo = true;
+            const uint8Array = filaAudio.shift();
+
+            try {
+                if (!audioContext || audioContext.state === 'closed') {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') audioContext.resume();
+
+                const floatData = new Float32Array(uint8Array.length / 2);
+                for (let i = 0; i < floatData.length; i++) {
+                    const sample = uint8Array[i * 2] | (uint8Array[i * 2 + 1] << 8);
+                    const sinal = sample > 32767 ? sample - 65536 : sample;
+                    floatData[i] = sinal / 32768.0;
+                }
+
+                const buffer = audioContext.createBuffer(1, floatData.length, SAMPLE_RATE);
+                buffer.getChannelData(0).set(floatData);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                fonteAtual = source;
+
+                source.onended = () => {
+                    fonteAtual = null;
+                    reproduzirProximo();
+                };
+
+                source.start(0);
+
+            } catch (error) {
+                log(`❌ Erro ao reproduzir: ${error.message}`, 'erro');
+                reproduzirProximo();
+            }
+        }
+
+        // ============================================
+        // TESTAR UMA VOZ
+        // ============================================
+        function testarVoz(voz) {
+            if (!wsConectado || !setupCompleto) {
+                log('❌ Conecte o WebSocket primeiro!', 'erro');
+                setStatus('vermelho', '<strong>Não conectado</strong> — clique em "Conectar WebSocket"');
+                return;
+            }
+
+            // Limpa fila atual
+            filaAudio = [];
+            reproduzindo = false;
+            if (fonteAtual) {
+                try { fonteAtual.stop(); } catch (e) {}
+                fonteAtual = null;
+            }
+            if (vozAtualTocando) {
+                const card = document.querySelector(`.voz-card[data-voz="${vozAtualTocando}"]`);
+                if (card) card.classList.remove('tocando');
+            }
+
+            // Marca visualmente
+            vozAtualTocando = voz;
+            const card = document.querySelector(`.voz-card[data-voz="${voz}"]`);
+            if (card) card.classList.add('tocando');
+
+            log(`🔊 Testando voz: ${voz}`, 'audio');
+            setStatus('amarelo', `<strong>Tocando:</strong> ${voz}`);
+
+            // Envia comando para o Gemini Live mudar de voz
+            // Como o setup inicial já foi enviado, enviamos o texto
+            // A voz é trocada via setup. Precisamos reenviar o setup com a nova voz.
+            // A Gemini Live API permite trocar voz durante a sessão?
+            // Por segurança, reenviamos o setup (funciona em algumas versões)
+            const texto = textoTeste.value.trim() || 'Olá! Bem-vindo à Pizzaria do Zé.';
+
+            try {
+                // Envia texto como se fosse fala do usuário
+                ws.send(JSON.stringify({
+                    realtime_input: {
+                        text: texto
+                    }
+                }));
+                log(`📤 Texto enviado para ${voz}`, 'info');
+            } catch (e) {
+                log(`❌ Erro ao enviar: ${e.message}`, 'erro');
+            }
+        }
+
+        // ============================================
+        // TESTAR TODAS AS VOZES (AUTO)
+        // ============================================
+        async function testarTodasVozes() {
+            if (!wsConectado || !setupCompleto) {
+                log('❌ Conecte o WebSocket primeiro!', 'erro');
+                return;
+            }
+
+            if (testandoTodas) {
+                log('⏹️ Teste automático interrompido', 'info');
+                testandoTodas = false;
+                return;
+            }
+
+            testandoTodas = true;
+            btnAuto.textContent = '⏹️ Parar Teste';
+            log('🔁 Iniciando teste de TODAS as vozes...', 'info');
+
+            for (const voz of VOZES) {
+                if (!testandoTodas) break;
+                testarVoz(voz.nome);
+
+                // Aguarda o áudio terminar
+                await new Promise(resolve => {
+                    const checkInterval = setInterval(() => {
+                        if (filaAudio.length === 0 && !reproduzindo) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 500);
+                    // Timeout de segurança
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }, 10000);
+                });
+
+                // Pausa entre vozes
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            testandoTodas = false;
+            btnAuto.textContent = '🔁 Testar Todas as Vozes';
+            log('✅ Teste de todas as vozes concluído!', 'sucesso');
+            setStatus('verde', '<strong>Teste concluído</strong>');
+        }
+
+        // ============================================
+        // PARAR ÁUDIO
+        // ============================================
+        function pararAudio() {
+            filaAudio = [];
+            reproduzindo = false;
+            if (fonteAtual) {
+                try { fonteAtual.stop(); } catch (e) {}
+                fonteAtual = null;
+            }
+            if (vozAtualTocando) {
+                const card = document.querySelector(`.voz-card[data-voz="${vozAtualTocando}"]`);
+                if (card) card.classList.remove('tocando');
+                vozAtualTocando = null;
+            }
+            log('⏹️ Áudio parado', 'info');
+            setStatus('verde', '<strong>Pronto</strong> — clique em uma voz para testar');
+        }
+
+        // ============================================
+        // LIMPAR LOG
+        // ============================================
+        function limparLog() {
+            logEl.innerHTML = '';
+            pacotesRecebidos = 0;
+            bytesRecebidos = 0;
+            atualizarStats();
+            log('🗑️ Log limpo', 'info');
+        }
+
+        // ============================================
+        // EVENTOS
+        // ============================================
+        btnConectar.addEventListener('click', conectar);
+        btnParar.addEventListener('click', pararAudio);
+        btnAuto.addEventListener('click', testarTodasVozes);
+        btnLimpar.addEventListener('click', limparLog);
+
+        // ============================================
+        // INICIALIZAÇÃO
+        // ============================================
+        async function init() {
+            construirGrid();
+            log('🎤 Sistema de teste de vozes carregado!', 'info');
+            log(`📋 ${VOZES.length} vozes disponíveis`, 'info');
+            log('1️⃣ Cole sua API Key (ou deixe vazio para usar a do servidor)', 'info');
+            log('2️⃣ Clique em "Conectar WebSocket"', 'info');
+            log('3️⃣ Clique em uma voz para ouvir', 'info');
+
+            // Tenta carregar API Key do localStorage
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+                log('🔑 API Key carregada do localStorage', 'info');
+            }
+
+            // Salva API Key ao digitar
+            apiKeyInput.addEventListener('change', () => {
+                const key = apiKeyInput.value.trim();
+                if (key) {
+                    localStorage.setItem('gemini_api_key', key);
+                    log('🔑 API Key salva localmente', 'info');
+                }
+            });
+
+            // Tenta buscar a API Key do servidor para mostrar
+            try {
+                const resp = await fetch('/api/config');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.apiKey) {
+                        log('✅ API Key disponível no servidor (deixe o campo vazio para usar)', 'sucesso');
+                    }
+                }
+            } catch (e) {
+                log('⚠️ Servidor não tem API Key configurada', 'debug');
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

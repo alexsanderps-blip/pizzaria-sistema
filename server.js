@@ -60,6 +60,7 @@ const URL_BASE = process.env.RENDER_EXTERNAL_URL || `http://${LOCAL_IP}:${PORT}`
 // ============================================
 let db;
 
+let whatsappTentandoReconectar = false;
 async function initDatabase() {
     // 🔥 ESCOLHE O CAMINHO BASEADO NO AMBIENTE
     const dbDir = IS_PRODUCTION
@@ -171,11 +172,23 @@ let whatsappReady = false;
 
 async function initWhatsApp() {
     try {
+        console.log('🔄 Iniciando WhatsApp...');
+        
         whatsappClient = new Client({
-            authStrategy: new LocalAuth(),
+            authStrategy: new LocalAuth({ clientId: 'pizzaria' }),
+            restartOnAuthFail: true,
             puppeteer: {
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu',
+                    '--disable-extensions'
+                ]
             }
         });
 
@@ -186,19 +199,87 @@ async function initWhatsApp() {
 
         whatsappClient.on('ready', () => {
             whatsappReady = true;
+            whatsappTentandoReconectar = false;
             console.log('✅ WhatsApp conectado!');
+        });
+
+        whatsappClient.on('authenticated', () => {
+            console.log('🔐 WhatsApp autenticado!');
+        });
+
+        whatsappClient.on('auth_failure', (msg) => {
+            console.error('❌ Falha na autenticação:', msg);
+            whatsappReady = false;
+        });
+
+        whatsappClient.on('disconnected', (reason) => {
+            console.warn('⚠️ WhatsApp desconectado:', reason);
+            whatsappReady = false;
+            // Tenta reconectar
+            if (!whatsappTentandoReconectar) {
+                whatsappTentandoReconectar = true;
+                setTimeout(() => {
+                    console.log('🔄 Tentando reconectar WhatsApp...');
+                    initWhatsApp();
+                }, 10000);
+            }
         });
 
         whatsappClient.on('message', async message => {
             await processarMensagemWhatsApp(message);
         });
 
-        whatsappClient.initialize();
-        console.log('🔄 Iniciando WhatsApp...');
+        // 🔥 TRATA O ERRO "Execution context was destroyed"
+        whatsappClient.on('loading_screen', (percent, message) => {
+            console.log(`⏳ Carregando WhatsApp: ${percent}% - ${message}`);
+        });
+
+        await whatsappClient.initialize();
+        
     } catch (error) {
-        console.error('❌ Erro ao iniciar WhatsApp:', error);
+        console.error('❌ Erro ao iniciar WhatsApp:', error.message);
+        whatsappReady = false;
+        
+        // 🔥 SE FOR O ERRO "Execution context was destroyed", tenta de novo
+        if (error.message && error.message.includes('Execution context was destroyed')) {
+            console.log('🔄 Contexto destruído. Tentando reiniciar em 10 segundos...');
+            
+            // Destrói o cliente atual
+            if (whatsappClient) {
+                try {
+                    await whatsappClient.destroy();
+                } catch (e) {}
+                whatsappClient = null;
+            }
+            
+            // Tenta novamente
+            if (!whatsappTentandoReconectar) {
+                whatsappTentandoReconectar = true;
+                setTimeout(() => {
+                    whatsappTentandoReconectar = false;
+                    initWhatsApp();
+                }, 10000);
+            }
+        }
     }
 }
+
+// 🔥 TRATA PROMISES NÃO TRATADAS (o erro pode vir por fora)
+process.on('unhandledRejection', (err) => {
+    if (String(err).includes('Execution context was destroyed')) {
+        console.warn('⚠️ Contexto do WhatsApp foi destruído. Reiniciando...');
+        whatsappReady = false;
+        if (whatsappClient) {
+            try {
+                whatsappClient.destroy().finally(() => {
+                    setTimeout(() => initWhatsApp(), 5000);
+                });
+            } catch (e) {
+                setTimeout(() => initWhatsApp(), 5000);
+            }
+        }
+    }
+});
 
 // ============================================
 // PROCESSAR MENSAGENS DO WHATSAPP
