@@ -1,41 +1,42 @@
 // ============================================
-// SERVIDOR PRINCIPAL - PIZZARIA + WHATSAPP + TOTEM
+// SERVIDOR PRINCIPAL - PIZZARIA + TOTEM + PAINÉIS
 // ============================================
+
+// 🔥 CARREGA VARIÁVEIS DE AMBIENTE
 require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const { open } = require('sqlite');
 const sqlite3 = require('sqlite3');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const os = require('os');
-const fs = require('fs');
-
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============================================
+// 🔥 DETECTA O AMBIENTE (LOCAL vs PRODUÇÃO)
+// ============================================
+const IS_PRODUCTION = 
+    process.env.NODE_ENV === 'production' || 
+    process.env.RENDER === 'true' ||
+    !!process.env.RENDER_EXTERNAL_URL;
+
+console.log(`🌍 Ambiente: ${IS_PRODUCTION ? 'PRODUÇÃO (Render)' : 'LOCAL (Dev)'}`);
+
+// ============================================
+// MIDDLEWARES
+// ============================================
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-app.get('/api/config', (req, res) => {
-    const apiKey = process.env.GEMINI_API_KEY;
-    
-    if (!apiKey) {
-        return res.status(500).json({ 
-            erro: 'API Key não configurada no servidor. Configure a variável GEMINI_API_KEY.' 
-        });
-    }
-    
-    res.json({ 
-        apiKey: apiKey,
-        voice: 'Zubenelgenubi',
-        model: 'gemini-3.1-flash-live-preview'
-    });
-});
+
 // ============================================
-// DESCOBRE O IP DA REDE LOCAL AUTOMATICAMENTE
+// DESCOBRE O IP DA REDE LOCAL (para totem no iPhone)
 // ============================================
 function getLocalIP() {
     const interfaces = os.networkInterfaces();
@@ -50,7 +51,9 @@ function getLocalIP() {
 }
 
 const LOCAL_IP = getLocalIP();
-const URL_BASE = `http://${LOCAL_IP}:${PORT}`;
+
+// 🔥 URL BASE DINÂMICA
+const URL_BASE = process.env.RENDER_EXTERNAL_URL || `http://${LOCAL_IP}:${PORT}`;
 
 // ============================================
 // BANCO DE DADOS SQLITE
@@ -58,17 +61,28 @@ const URL_BASE = `http://${LOCAL_IP}:${PORT}`;
 let db;
 
 async function initDatabase() {
-    const dbDir = path.join(__dirname, 'database');
+    // 🔥 ESCOLHE O CAMINHO BASEADO NO AMBIENTE
+    const dbDir = IS_PRODUCTION
+        ? '/opt/render/project/src/database'
+        : path.join(__dirname, 'database');
+
+    // Cria a pasta se não existir
     if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
-        console.log('📁 Pasta database/ criada');
+        console.log('📁 Pasta database/ criada em:', dbDir);
     }
 
+    const dbPath = path.join(dbDir, 'pizzaria.db');
+    console.log('💾 Banco de dados:', dbPath);
+
     db = await open({
-        filename: './database/pizzaria.db',
+        filename: dbPath,
         driver: sqlite3.Database
     });
 
+    // ==========================================
+    // TABELA: CLIENTES
+    // ==========================================
     await db.exec(`
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,6 +99,9 @@ async function initDatabase() {
         )
     `);
 
+    // ==========================================
+    // TABELA: PEDIDOS
+    // ==========================================
     await db.exec(`
         CREATE TABLE IF NOT EXISTS pedidos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,6 +120,9 @@ async function initDatabase() {
         )
     `);
 
+    // ==========================================
+    // TABELA: MOTOBOYS
+    // ==========================================
     await db.exec(`
         CREATE TABLE IF NOT EXISTS motoboys (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,6 +135,9 @@ async function initDatabase() {
         )
     `);
 
+    // ==========================================
+    // TABELA: TOKENS WHATSAPP
+    // ==========================================
     await db.exec(`
         CREATE TABLE IF NOT EXISTS tokens_whatsapp (
             telefone TEXT PRIMARY KEY,
@@ -124,11 +147,24 @@ async function initDatabase() {
         )
     `);
 
+    // ==========================================
+    // TABELA: HISTÓRICO DE STATUS
+    // ==========================================
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS historico_status (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pedido_id INTEGER,
+            status TEXT,
+            data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+            observacao TEXT
+        )
+    `);
+
     console.log('✅ Banco de dados SQLite inicializado!');
 }
 
 // ============================================
-// WHATSAPP CLIENT
+// WHATSAPP CLIENT (só roda em LOCAL)
 // ============================================
 let whatsappClient = null;
 let whatsappReady = false;
@@ -175,44 +211,36 @@ async function processarMensagemWhatsApp(message) {
 
     console.log(`📩 Mensagem de ${telefone}: ${texto}`);
 
-    // Comando: LINK
     if (texto === 'link' || texto === 'comprar' || texto === 'pedido') {
         await gerarLinkCompra(telefone, message);
         return;
     }
 
-    // Comando: STATUS
     if (texto === 'status' || texto === 'meu pedido') {
         await verificarStatusPedido(telefone, message);
         return;
     }
 
-    // Comando: AJUDA
     if (texto === 'ajuda' || texto === 'help' || texto === 'oi' || texto === 'olá' || texto === 'ola') {
         await message.reply(
             `🍕 *Pizzaria do Zé*\n\n` +
             `Olá! 👋 Como posso ajudar?\n\n` +
             `📌 Digite *link* para fazer seu pedido\n` +
             `📌 Digite *status* para acompanhar\n` +
-            `📌 Digite *ajuda* para ver os comandos\n\n` +
-            `🔗 Ou acesse diretamente: ${URL_BASE}/pedido?tel=${telefone}`
+            `📌 Digite *ajuda* para ver os comandos`
         );
         return;
     }
 
-    // Mensagem padrão
     await message.reply(
         `🍕 *Pizzaria do Zé*\n\n` +
-        `Olá! 👋\n\n` +
         `📌 Digite *link* para fazer seu pedido\n` +
-        `📌 Digite *status* para acompanhar\n` +
-        `📌 Digite *ajuda* para ver os comandos\n\n` +
-        `🔗 Ou acesse diretamente: ${URL_BASE}/pedido?tel=${telefone}`
+        `📌 Digite *status* para acompanhar`
     );
 }
 
 // ============================================
-// GERAR LINK DE COMPRA (para o totem)
+// GERAR LINK DE COMPRA
 // ============================================
 async function gerarLinkCompra(telefone, message) {
     try {
@@ -224,7 +252,6 @@ async function gerarLinkCompra(telefone, message) {
             cliente = await db.get('SELECT * FROM clientes WHERE telefone = ?', [telefone]);
         }
 
-        // Gera token único
         const token = Math.random().toString(36).substring(2, 15) +
             Math.random().toString(36).substring(2, 15);
 
@@ -233,20 +260,17 @@ async function gerarLinkCompra(telefone, message) {
             [telefone, token]
         );
 
-        // 🔥 LINK DO TOTEM COM O TELEFONE
         const linkPedido = `${URL_BASE}/pedido?tel=${telefone}&token=${token}`;
 
         let mensagemEndereco = '';
         if (cliente.endereco) {
-            mensagemEndereco =
-                `\n\n📍 *Endereço cadastrado:*\n${cliente.endereco}, ${cliente.numero}\n${cliente.bairro} - ${cliente.cidade}`;
+            mensagemEndereco = `\n\n📍 *Endereço cadastrado:*\n${cliente.endereco}, ${cliente.numero}\n${cliente.bairro} - ${cliente.cidade}`;
         }
 
         await message.reply(
             `🍕 *Link para fazer seu pedido!*\n\n` +
-            `🔗 Clique no link abaixo:\n${linkPedido}\n\n` +
-            `💡 *Dica:* Salve este link para pedir mais rápido!${mensagemEndereco}\n\n` +
-            `📌 Quando fizer o pedido, você pode confirmar ou alterar o endereço.`
+            `🔗 ${linkPedido}\n\n` +
+            `💡 *Dica:* Salve este link!${mensagemEndereco}`
         );
 
         console.log(`✅ Link gerado para ${telefone}: ${linkPedido}`);
@@ -265,10 +289,7 @@ async function verificarStatusPedido(telefone, message) {
         const cliente = await db.get('SELECT id FROM clientes WHERE telefone = ?', [telefone]);
 
         if (!cliente) {
-            await message.reply(
-                '📌 Você ainda não tem pedidos registrados.\n' +
-                'Digite *link* para fazer seu primeiro pedido! 🍕'
-            );
+            await message.reply('📌 Você ainda não tem pedidos.\nDigite *link* para pedir! 🍕');
             return;
         }
 
@@ -282,27 +303,18 @@ async function verificarStatusPedido(telefone, message) {
         );
 
         if (!pedido) {
-            await message.reply(
-                '📌 Você ainda não tem pedidos.\n' +
-                'Digite *link* para fazer seu pedido! 🍕'
-            );
+            await message.reply('📌 Você ainda não tem pedidos.\nDigite *link* para pedir! 🍕');
             return;
         }
 
         const statusEmoji = {
-            'recebido': '📩',
-            'preparo': '👨‍🍳',
-            'saiu': '🚀',
-            'entregue': '✅',
-            'cancelado': '❌'
+            'recebido': '📩', 'preparo': '👨‍🍳', 'saiu': '🚀',
+            'entregue': '✅', 'cancelado': '❌'
         };
-
         const statusMap = {
-            'recebido': 'Pedido Recebido',
-            'preparo': 'Em Preparo',
-            'saiu': 'Saiu para Entrega',
-            'entregue': 'Pedido Entregue',
-            'cancelado': 'Pedido Cancelado'
+            'recebido': 'Pedido Recebido', 'preparo': 'Em Preparo',
+            'saiu': 'Saiu para Entrega', 'entregue': 'Pedido Entregue',
+            'cancelado': 'Cancelado'
         };
 
         let mensagem =
@@ -311,23 +323,14 @@ async function verificarStatusPedido(telefone, message) {
             `📅 ${new Date(pedido.data_pedido).toLocaleString()}\n` +
             `💰 R$ ${pedido.total.toFixed(2)}`;
 
-        if (pedido.motoboy_nome) {
-            mensagem += `\n🛵 *Entregador:* ${pedido.motoboy_nome}`;
-        }
-
-        if (pedido.status === 'saiu') {
-            mensagem += `\n\n🚀 *Seu pedido está a caminho!*`;
-        }
-
-        if (pedido.status === 'entregue') {
-            mensagem += `\n\n✅ *Pedido entregue! Obrigado! 🎉*`;
-        }
+        if (pedido.motoboy_nome) mensagem += `\n🛵 *Entregador:* ${pedido.motoboy_nome}`;
+        if (pedido.status === 'saiu') mensagem += `\n\n🚀 *Seu pedido está a caminho!*`;
 
         await message.reply(mensagem);
 
     } catch (error) {
-        console.error('❌ Erro ao verificar status:', error);
-        await message.reply('❌ Erro ao verificar status. Tente novamente.');
+        console.error('❌ Erro:', error);
+        await message.reply('❌ Erro ao verificar status.');
     }
 }
 
@@ -335,7 +338,20 @@ async function verificarStatusPedido(telefone, message) {
 // ROTAS DA API
 // ============================================
 
-// Link via API
+// 🔑 ROTA: Retorna a API Key para o frontend
+app.get('/api/config', (req, res) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+        return res.status(500).json({ erro: 'API Key não configurada no servidor' });
+    }
+    res.json({
+        apiKey: apiKey,
+        voice: 'Zubenelgenubi',
+        model: 'gemini-3.1-flash-live-preview'
+    });
+});
+
+// Gerar link via API
 app.get('/api/link/:telefone', async (req, res) => {
     try {
         const telefone = req.params.telefone.replace(/\D/g, '');
@@ -363,8 +379,7 @@ app.get('/api/link/:telefone', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro:', error);
-        res.status(500).json({ erro: 'Erro interno' });
+        res.status(500).json({ erro: error.message });
     }
 });
 
@@ -459,17 +474,22 @@ app.post('/api/pedidos', async (req, res) => {
             [cliente_id]
         );
 
-        // 🔥 ENVIA NOTIFICAÇÃO PELO WHATSAPP
-        const cliente = await db.get('SELECT telefone FROM clientes WHERE id = ?', [cliente_id]);
-        if (cliente && whatsappReady) {
-            await enviarMensagemWhatsApp(cliente.telefone,
-                `✅ *Pedido #${numero_pedido} confirmado!*\n\n` +
-                `💰 Total: R$ ${total.toFixed(2)}\n` +
-                `💳 Pagamento: ${forma_pagamento.toUpperCase()}\n` +
-                `📍 Entrega: ${endereco_entrega}\n\n` +
-                `👨‍🍳 Seu pedido já está sendo preparado!\n` +
-                `Digite *status* para acompanhar.`
-            );
+        // Notifica cliente via WhatsApp (só se estiver ativo)
+        if (whatsappReady && cliente_id) {
+            const cliente = await db.get('SELECT telefone FROM clientes WHERE id = ?', [cliente_id]);
+            if (cliente && cliente.telefone) {
+                try {
+                    const chatId = cliente.telefone.includes('@c.us') ? cliente.telefone : `${cliente.telefone}@c.us`;
+                    await whatsappClient.sendMessage(chatId,
+                        `✅ *Pedido #${numero_pedido} confirmado!*\n\n` +
+                        `💰 Total: R$ ${total.toFixed(2)}\n` +
+                        `💳 Pagamento: ${forma_pagamento.toUpperCase()}\n` +
+                        `📍 Entrega: ${endereco_entrega}`
+                    );
+                } catch (e) {
+                    console.warn('⚠️ Não conseguiu notificar WhatsApp');
+                }
+            }
         }
 
         res.json({ sucesso: true, pedido: { id: result.lastID, numero_pedido } });
@@ -489,6 +509,11 @@ app.put('/api/pedidos/:id/status', async (req, res) => {
             [status, motoboy_id || null, req.params.id]
         );
 
+        await db.run(
+            `INSERT INTO historico_status (pedido_id, status, observacao) VALUES (?, ?, ?)`,
+            [req.params.id, status, observacao || '']
+        );
+
         if (status === 'entregue') {
             await db.run(
                 'UPDATE pedidos SET data_entrega = CURRENT_TIMESTAMP WHERE id = ?',
@@ -496,25 +521,31 @@ app.put('/api/pedidos/:id/status', async (req, res) => {
             );
         }
 
-        // 🔥 NOTIFICA O CLIENTE SOBRE MUDANÇA DE STATUS
-        const pedido = await db.get(`
-            SELECT p.*, c.telefone as cliente_telefone 
-            FROM pedidos p 
-            LEFT JOIN clientes c ON p.cliente_id = c.id 
-            WHERE p.id = ?
-        `, [req.params.id]);
+        // Notifica cliente via WhatsApp
+        if (whatsappReady) {
+            const pedido = await db.get(`
+                SELECT p.*, c.telefone as cliente_telefone 
+                FROM pedidos p 
+                LEFT JOIN clientes c ON p.cliente_id = c.id 
+                WHERE p.id = ?
+            `, [req.params.id]);
 
-        if (pedido && pedido.cliente_telefone && whatsappReady) {
-            const statusMsg = {
-                'preparo': '👨‍🍳 Seu pedido está sendo preparado!',
-                'saiu': '🚀 Seu pedido saiu para entrega!',
-                'entregue': '✅ Seu pedido foi entregue! Obrigado! 🎉'
-            };
-
-            if (statusMsg[status]) {
-                await enviarMensagemWhatsApp(pedido.cliente_telefone,
-                    `📦 *Pedido #${pedido.numero_pedido}*\n\n${statusMsg[status]}`
-                );
+            if (pedido && pedido.cliente_telefone) {
+                const statusMsg = {
+                    'preparo': '👨‍🍳 Seu pedido está sendo preparado!',
+                    'saiu': '🚀 Seu pedido saiu para entrega!',
+                    'entregue': '✅ Seu pedido foi entregue! Obrigado! 🎉'
+                };
+                if (statusMsg[status]) {
+                    try {
+                        const chatId = pedido.cliente_telefone.includes('@c.us')
+                            ? pedido.cliente_telefone
+                            : `${pedido.cliente_telefone}@c.us`;
+                        await whatsappClient.sendMessage(chatId,
+                            `📦 *Pedido #${pedido.numero_pedido}*\n\n${statusMsg[status]}`
+                        );
+                    } catch (e) {}
+                }
             }
         }
 
@@ -612,14 +643,11 @@ app.get('/api/relatorios/vendas', async (req, res) => {
     }
 });
 
-// ============================================
-// ROTA: TOTEM (cliente acessa pelo link)
-// ============================================
+// Rota do totem (cliente acessa pelo link)
 app.get('/pedido', async (req, res) => {
     try {
         const { tel, token } = req.query;
 
-        // Se veio telefone, salva no cliente
         if (tel) {
             let cliente = await db.get('SELECT * FROM clientes WHERE telefone = ?', [tel]);
             if (!cliente) {
@@ -627,11 +655,9 @@ app.get('/pedido', async (req, res) => {
             }
         }
 
-        // Envia o HTML do totem
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
 
     } catch (error) {
-        console.error('❌ Erro:', error);
         res.status(500).send('Erro interno');
     }
 });
@@ -641,29 +667,26 @@ app.get('/pedido', async (req, res) => {
 // ============================================
 async function startServer() {
     await initDatabase();
-    // 🔥 Só inicia WhatsApp se NÃO estiver no Render (evita crash)
-if (process.env.NODE_ENV !== 'production') {
-    await initWhatsApp();
-} else {
-    console.log('⚠️ WhatsApp desabilitado em produção (Render)');
-}
+
+    // 🔥 SÓ INICIA WHATSAPP EM LOCAL
+    if (!IS_PRODUCTION) {
+        await initWhatsApp();
+    } else {
+        console.log('⚠️ WhatsApp desabilitado em produção');
+    }
 
     app.listen(PORT, '0.0.0.0', () => {
         console.log('');
         console.log('════════════════════════════════════════════════════════');
         console.log('🚀 SERVIDOR PIZZARIA RODANDO!');
         console.log('════════════════════════════════════════════════════════');
-        console.log(`💻 PC (local):    http://localhost:${PORT}`);
-        console.log(`📱 iPhone (rede): http://${LOCAL_IP}:${PORT}`);
-        console.log(`📊 Admin:         http://${LOCAL_IP}:${PORT}/admin.html`);
-        console.log(`🛵 Motoboy:       http://${LOCAL_IP}:${PORT}/motoboy.html`);
-        console.log(`🍕 Totem:         http://${LOCAL_IP}:${PORT}/pedido?tel=5511999999999`);
+        console.log(`🌍 Ambiente: ${IS_PRODUCTION ? 'PRODUÇÃO' : 'LOCAL'}`);
+        console.log(`💻 Local:  http://localhost:${PORT}`);
+        console.log(`📱 Rede:   http://${LOCAL_IP}:${PORT}`);
+        console.log(`📊 Admin:  ${URL_BASE}/admin.html`);
+        console.log(`🛵 Motoboy: ${URL_BASE}/motoboy.html`);
+        console.log(`🍕 Totem:   ${URL_BASE}/pedido`);
         console.log('════════════════════════════════════════════════════════');
-        console.log('');
-        console.log('⚠️  IMPORTANTE:');
-        console.log('   • Para o MICROFONE funcionar no iPhone,');
-        console.log('     você PRECISA de HTTPS. Use ngrok:');
-        console.log('     ngrok http 3000');
         console.log('');
     });
 }

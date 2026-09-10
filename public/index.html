@@ -1060,7 +1060,7 @@
             if (estado.etapa === 'endereco') return processarEndereco(texto);
             if (estado.etapa === 'endereco_numero') return processarNumeroEndereco(texto);
             if (estado.etapa === 'endereco_confirmacao') {
-                if (lower === 'sim' || lower === 'confirmo') { confirmarEndereco(); return true; }
+                if (lower === 'sim.' || lower === 'confirmo.') { confirmarEndereco(); return true; }
                 if (lower === 'corrigir') { corrigirEndereco(); return true; }
                 return false;
             }
