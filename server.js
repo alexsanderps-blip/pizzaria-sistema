@@ -641,7 +641,12 @@ app.get('/pedido', async (req, res) => {
 // ============================================
 async function startServer() {
     await initDatabase();
+    // 🔥 Só inicia WhatsApp se NÃO estiver no Render (evita crash)
+if (process.env.NODE_ENV !== 'production') {
     await initWhatsApp();
+} else {
+    console.log('⚠️ WhatsApp desabilitado em produção (Render)');
+}
 
     app.listen(PORT, '0.0.0.0', () => {
         console.log('');
