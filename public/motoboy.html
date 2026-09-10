@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛵 Painel do Motoboy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d1117;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #30363d;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+        }
+        .header .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .status-disponivel {
+            background: #1a5a3a;
+            color: #6bff6b;
+        }
+        .status-ocupado {
+            background: #5a3a1a;
+            color: #ffb74d;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: #161b22;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            text-align: center;
+        }
+        .card .numero {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        .card .label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+        .pedido-card {
+            background: #161b22;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .pedido-card .header-pedido {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .pedido-card .numero-pedido {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+        .pedido-card .cliente {
+            color: #aaa;
+        }
+        .pedido-card .detalhes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        .pedido-card .detalhes .label {
+            color: #888;
+        }
+        .pedido-card .detalhes .valor {
+            color: #fff;
+        }
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .btn-success {
+            background: #1f883d;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #2ea043;
+        }
+        .btn-warning {
+            background: #f0883e;
+            color: #000;
+        }
+        .btn-warning:hover {
+            background: #f5a55a;
+        }
+        .btn-danger {
+            background: #da3633;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #f44336;
+        }
+        .btn-secondary {
+            background: #21262d;
+            color: #aaa;
+        }
+        .btn-secondary:hover {
+            background: #30363d;
+            color: #fff;
+        }
+        .hidden {
+            display: none;
+        }
+        .filtros {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .filtros select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #0d1117;
+            color: #fff;
+            border: 1px solid #30363d;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a5a3a;
+            color: #6bff6b;
+            padding: 15px 25px;
+            border-radius: 12px;
+            border: 1px solid #2a6a4a;
+            animation: slideUp 0.3s ease;
+            z-index: 999;
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        @media (max-width: 600px) {
+            .pedido-card .detalhes {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🛵 Painel do Motoboy</h1>
+            <div>
+                <span class="status status-disponivel" id="statusMotoboy">🟢 Disponível</span>
+                <button class="btn btn-secondary" onclick="toggleDisponibilidade()" id="btnToggleStatus">🔴 Ficar Ocupado</button>
+                <span style="margin-left:15px; color:#888;" id="motoboyNome">Carregando...</span>
+            </div>
+        </div>
+
+        <!-- Cards -->
+        <div class="cards">
+            <div class="card">
+                <div class="numero" id="totalEntregas">0</div>
+                <div class="label">📦 Entregas Hoje</div>
+            </div>
+            <div class="card">
+                <div class="numero" id="entregasHoje">0</div>
+                <div class="label">✅ Concluídas</div>
+            </div>
+            <div class="card">
+                <div class="numero" id="pendentesHoje">0</div>
+                <div class="label">⏳ Pendentes</div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros">
+            <select id="filtroStatusPedido">
+                <option value="todos">Todos os pedidos</option>
+                <option value="saiu">🚀 Saiu para Entrega</option>
+                <option value="entregue">✅ Entregues</option>
+            </select>
+            <button class="btn btn-secondary" onclick="carregarPedidos()">🔄 Atualizar</button>
+        </div>
+
+        <!-- Lista de Pedidos -->
+        <div id="listaPedidos">
+            <p style="color:#888; text-align:center; padding:40px;">Carregando pedidos...</p>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURAÇÃO
+        // ============================================
+        const API_URL = 'http://localhost:3000/api';
+        let motoboyId = 1; // Em produção, viria do login
+        let motoboyStatus = 'disponivel';
+        let intervalId = null;
+
+        // ============================================
+        // CARREGAR DADOS
+        // ============================================
+        async function carregarDados() {
+            try {
+                // Carrega motoboy
+                const motoRes = await fetch(`${API_URL}/motoboys`);
+                const motoboys = await motoRes.json();
+                const motoboy = motoboys.find(m => m.id === motoboyId);
+
+                if (motoboy) {
+                    document.getElementById('motoboyNome').textContent = `👤 ${motoboy.nome}`;
+                    motoboyStatus = motoboy.status;
+                    atualizarStatusUI();
+                }
+
+                // Carrega pedidos
+                await carregarPedidos();
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                mostrarToast('Erro ao carregar dados', 'erro');
+            }
+        }
+
+        // ============================================
+        // CARREGAR PEDIDOS
+        // ============================================
+        async function carregarPedidos() {
+            try {
+                const response = await fetch(`${API_URL}/pedidos`);
+                const pedidos = await response.json();
+
+                const filtroStatus = document.getElementById('filtroStatusPedido').value;
+
+                // Filtra pedidos do motoboy atual
+                let meusPedidos = pedidos.filter(p => p.motoboy_id === motoboyId);
+
+                // Aplica filtro de status
+                if (filtroStatus !== 'todos') {
+                    meusPedidos = meusPedidos.filter(p => p.status === filtroStatus);
+                }
+
+                // Ordena: mais recentes primeiro
+                meusPedidos.sort((a, b) => new Date(b.data_pedido) - new Date(a.data_pedido));
+
+                // Atualiza cards
+                const totalHoje = meusPedidos.filter(p =>
+                    new Date(p.data_pedido).toDateString() === new Date().toDateString()
+                );
+                const entreguesHoje = totalHoje.filter(p => p.status === 'entregue');
+                const pendentesHoje = totalHoje.filter(p => p.status !== 'entregue' && p.status !== 'cancelado');
+
+                document.getElementById('totalEntregas').textContent = totalHoje.length;
+                document.getElementById('entregasHoje').textContent = entreguesHoje.length;
+                document.getElementById('pendentesHoje').textContent = pendentesHoje.length;
+
+                // Renderiza pedidos
+                const container = document.getElementById('listaPedidos');
+
+                if (meusPedidos.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center; padding:40px; color:#888;">
+                            <p style="font-size:3rem;">🛵</p>
+                            <p>Nenhum pedido atribuído a você</p>
+                            <p style="font-size:0.85rem; margin-top:10px;">Aguarde novos pedidos ou atualize a página</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = meusPedidos.map(p => `
+                    <div class="pedido-card">
+                        <div class="header-pedido">
+                            <div>
+                                <span class="numero-pedido">#${p.numero_pedido}</span>
+                                <span class="cliente"> - ${p.cliente_nome || 'Anônimo'}</span>
+                            </div>
+                            <span class="status-badge status-${p.status}">${p.status}</span>
+                        </div>
+                        <div class="detalhes">
+                            <div>
+                                <span class="label">📍 Entrega:</span>
+                                <span class="valor">${p.endereco_entrega || 'Não informado'}</span>
+                            </div>
+                            <div>
+                                <span class="label">💰 Total:</span>
+                                <span class="valor">R$ ${(p.total || 0).toFixed(2)}</span>
+                            </div>
+                            <div>
+                                <span class="label">💳 Pagamento:</span>
+                                <span class="valor">${p.forma_pagamento || '-'}</span>
+                            </div>
+                            <div>
+                                <span class="label">📅 Data:</span>
+                                <span class="valor">${new Date(p.data_pedido).toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                            ${p.status === 'saiu' ? `
+                                <button class="btn btn-success" onclick="atualizarStatus(${p.id}, 'entregue')">
+                                    ✅ Entregue
+                                </button>
+                                <button class="btn btn-danger" onclick="atualizarStatus(${p.id}, 'cancelado')">
+                                    ❌ Cancelar
+                                </button>
+                            ` : ''}
+                            ${p.status === 'entregue' ? `
+                                <span style="color:#4caf50;">✅ Entregue com sucesso!</span>
+                            ` : ''}
+                            ${p.status === 'cancelado' ? `
+                                <span style="color:#ff6b6b;">❌ Cancelado</span>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                document.getElementById('listaPedidos').innerHTML =
+                    '<p style="color:#ff6b6b;">Erro ao carregar pedidos</p>';
+            }
+        }
+
+        // ============================================
+        // ATUALIZAR STATUS DO PEDIDO
+        // ============================================
+        async function atualizarStatus(pedidoId, status) {
+            try {
+                const confirmar = status === 'entregue' ?
+                    confirm('✅ Confirmar entrega do pedido?') :
+                    confirm('❌ Confirmar cancelamento do pedido?');
+
+                if (!confirmar) return;
+
+                const response = await fetch(`${API_URL}/pedidos/${pedidoId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: status,
+                        motoboy_id: motoboyId,
+                        observacao: status === 'entregue' ? 'Entregue pelo motoboy' : 'Cancelado pelo motoboy'
+                    })
+                });
+
+                if (response.ok) {
+                    mostrarToast(`✅ Pedido #${pedidoId} ${status === 'entregue' ? 'entregue' : 'cancelado'} com sucesso!`);
+                    carregarPedidos();
+                    carregarDados();
+
+                    // Se entregue, volta para disponível
+                    if (status === 'entregue' && motoboyStatus === 'ocupado') {
+                        await fetch(`${API_URL}/motoboys/${motoboyId}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'disponivel' })
+                        });
+                        motoboyStatus = 'disponivel';
+                        atualizarStatusUI();
+                    }
+                } else {
+                    mostrarToast('❌ Erro ao atualizar status', 'erro');
+                }
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                mostrarToast('❌ Erro ao atualizar status', 'erro');
+            }
+        }
+
+        // ============================================
+        // TOGGLE DISPONIBILIDADE
+        // ============================================
+        async function toggleDisponibilidade() {
+            const novoStatus = motoboyStatus === 'disponivel' ? 'ocupado' : 'disponivel';
+
+            try {
+                const response = await fetch(`${API_URL}/motoboys/${motoboyId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: novoStatus })
+                });
+
+                if (response.ok) {
+                    motoboyStatus = novoStatus;
+                    atualizarStatusUI();
+                    mostrarToast(`🟢 Status alterado para ${novoStatus}`);
+                    carregarPedidos();
+                }
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                mostrarToast('❌ Erro ao alterar status', 'erro');
+            }
+        }
+
+        // ============================================
+        // ATUALIZAR UI
+        // ===========================================

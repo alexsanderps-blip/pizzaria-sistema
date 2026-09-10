@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍕 Fazer Pedido</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d1117;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #30363d;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .cliente-info {
+            background: #161b22;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            margin-bottom: 20px;
+        }
+        .cliente-info .telefone {
+            color: #58a6ff;
+            font-weight: bold;
+        }
+        .cardapio-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .item-cardapio {
+            background: #161b22;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .item-cardapio:hover {
+            border-color: #4caf50;
+            transform: scale(1.02);
+        }
+        .item-cardapio .preco {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .carrinho {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            margin-top: 20px;
+        }
+        .carrinho-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .carrinho-total {
+            text-align: right;
+            font-size: 1.2rem;
+            padding-top: 10px;
+            border-top: 2px solid #30363d;
+            margin-top: 10px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary {
+            background: #1f883d;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+        .btn-secondary {
+            background: #21262d;
+            color: #aaa;
+        }
+        .btn-secondary:hover {
+            background: #30363d;
+            color: #fff;
+        }
+        .btn-danger {
+            background: #da3633;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #f44336;
+        }
+        .endereco-area {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            margin-top: 20px;
+        }
+        .endereco-area input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            background: #0d1117;
+            color: #fff;
+            border: 1px solid #30363d;
+        }
+        .endereco-area input:focus {
+            outline: none;
+            border-color: #4caf50;
+        }
+        .status-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            background: #161b22;
+            border-radius: 12px;
+            border-left: 4px solid #30363d;
+        }
+        .status-item.concluido {
+            border-left-color: #4caf50;
+        }
+        .status-item.ativo {
+            border-left-color: #fbbc05;
+            background: #1a1a0a;
+        }
+        .hidden {
+            display: none;
+        }
+        .pix-area {
+            background: #1a2a1a;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #2a4a2a;
+            text-align: center;
+        }
+        .pix-area .chave {
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            margin: 10px 0;
+            color: #f0883e;
+        }
+        @media (max-width: 600px) {
+            .cardapio-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <!-- Header -->
+        <div class="header">
+            <h1>🍕 Pizzaria do Zé</h1>
+            <p id="clienteInfo">Carregando...</p>
+        </div>
+
+        <!-- Conteúdo principal -->
+        <div id="conteudo">
+            <!-- Cardápio -->
+            <div id="telaCardapio">
+                <h2>📋 Cardápio</h2>
+                <div class="cardapio-grid" id="cardapioGrid"></div>
+                <button class="btn btn-secondary" onclick="verCarrinho()">🛒 Ver Carrinho (<span id="qtdCarrinho">0</span>)</button>
+            </div>
+
+            <!-- Carrinho -->
+            <div id="telaCarrinho" class="hidden">
+                <h2>🛒 Carrinho</h2>
+                <div id="carrinhoLista"></div>
+                <div class="carrinho-total">Total: <span id="carrinhoTotal">R$ 0,00</span></div>
+                <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="voltarCardapio()">← Voltar</button>
+                    <button class="btn btn-danger" onclick="limparCarrinho()">🗑️ Limpar</button>
+                    <button class="btn btn-primary" onclick="irParaPagamento()">✅ Finalizar</button>
+                </div>
+            </div>
+
+            <!-- Pagamento -->
+            <div id="telaPagamento" class="hidden">
+                <h2>💳 Pagamento</h2>
+                <p>Total: <strong id="pagamentoTotal">R$ 0,00</strong></p>
+                <div style="display:flex; gap:10px; margin:15px 0; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="escolherPagamento('dinheiro')">💵 Dinheiro</button>
+                    <button class="btn btn-primary" onclick="escolherPagamento('cartao')">💳 Cartão</button>
+                    <button class="btn btn-primary" onclick="escolherPagamento('pix')">📱 Pix</button>
+                </div>
+                <div id="detalhesPagamento"></div>
+                <button class="btn btn-secondary" onclick="voltarCarrinho()">← Voltar</button>
+            </div>
+
+            <!-- Endereço -->
+            <div id="telaEndereco" class="hidden">
+                <h2>📍 Endereço de Entrega</h2>
+                <div id="enderecoInfo"></div>
+                <div class="endereco-area">
+                    <input type="text" id="inputCep" placeholder="CEP (opcional)">
+                    <button class="btn btn-secondary" onclick="buscarCep()">🔍 Buscar CEP</button>
+                    <input type="text" id="inputEndereco" placeholder="Rua, Avenida...">
+                    <input type="text" id="inputNumero" placeholder="Número">
+                    <input type="text" id="inputBairro" placeholder="Bairro">
+                    <input type="text" id="inputCidade" placeholder="Cidade">
+                    <input type="text" id="inputComplemento" placeholder="Complemento (apto, casa...)">
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="voltarPagamento()">← Voltar</button>
+                    <button class="btn btn-primary" onclick="confirmarEndereco()">✅ Confirmar Pedido</button>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div id="telaStatus" class="hidden">
+                <h2>📦 Status do Pedido</h2>
+                <div id="statusContainer" class="status-container"></div>
+                <button class="btn btn-secondary" onclick="novoPedido()">🔄 Novo Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURAÇÃO
+        // ============================================
+        const API_URL = 'http://localhost:3000/api';
+        const CARDAPIO = [
+            { id: 1, nome: 'Marguerita', preco: 39.90, emoji: '🧀', descricao: 'Mussarela, tomate, manjericão' },
+            { id: 2, nome: 'Portuguesa', preco: 42.90, emoji: '🥓', descricao: 'Mussarela, presunto, ovo, cebola' },
+            { id: 3, nome: 'Calabresa', preco: 41.90, emoji: '🌶️', descricao: 'Mussarela, calabresa, cebola' },
+            { id: 4, nome: 'Frango com Catupiry', preco: 44.90, emoji: '🧄', descricao: 'Frango, catupiry, milho' },
+            { id: 5, nome: 'Quatro Queijos', preco: 43.90, emoji: '🧀', descricao: 'Mussarela, provolone, parmesão' },
+            { id: 6, nome: 'Chocolate', preco: 39.90, emoji: '🍫', descricao: 'Chocolate, morango' },
+        ];
+
+        // ============================================
+        // ESTADO
+        // ============================================
+        const estado = {
+            cliente: null,
+            token: null,
+            carrinho: [],
+            formaPagamento: null,
+            pagamentoConfirmado: false,
+            endereco: {
+                cep: '',
+                logradouro: '',
+                numero: '',
+                bairro: '',
+                cidade: '',
+                complemento: ''
+            },
+            pedidoAtual: null,
+        };
+
+        // ============================================
+        // INICIALIZAÇÃO
+        // ============================================
+        function init() {
+            const path = window.location.pathname;
+            const token = path.split('/').pop();
+
+            if (token) {
+                estado.token = token;
+                carregarCliente(token);
+            } else {
+                document.getElementById('clienteInfo').textContent = '❌ Token inválido';
+            }
+
+            renderizarCardapio();
+        }
+
+        async function carregarCliente(token) {
+            try {
+                const response = await fetch(`${API_URL}/cliente/token/${token}`);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    estado.cliente = data.cliente;
+                    document.getElementById('clienteInfo').innerHTML = `
+                        👤 <strong>${data.cliente.nome || 'Cliente'}</strong> | 
+                        📱 <span class="telefone">${formatarTelefone(data.cliente.telefone)}</span>
+                        ${data.cliente.endereco ? `<br>📍 ${data.cliente.endereco}, ${data.cliente.numero} - ${data.cliente.bairro}` : ''}
+                    `;
+
+                    // Se tem endereço cadastrado, preenche
+                    if (data.cliente.endereco) {
+                        estado.endereco.logradouro = data.cliente.endereco || '';
+                        estado.endereco.numero = data.cliente.numero || '';
+                        estado.endereco.bairro = data.cliente.bairro || '';
+                        estado.endereco.cidade = data.cliente.cidade || '';
+                        estado.endereco.complemento = data.cliente.complemento || '';
+                        estado.endereco.cep = data.cliente.cep || '';
+                    }
+                } else {
+                    document.getElementById('clienteInfo').textContent = '❌ Cliente não encontrado';
+                }
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                document.getElementById('clienteInfo').textContent = '❌ Erro ao carregar dados';
+            }
+        }
+
+        // ============================================
+        // CARDÁPIO
+        // ============================================
+        function renderizarCardapio() {
+            const grid = document.getElementById('cardapioGrid');
+            grid.innerHTML = '';
+
+            CARDAPIO.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item-cardapio';
+                div.innerHTML = `
+                    <div class="nome">${item.emoji} ${item.nome}</div>
+                    <div class="preco">R$ ${item.preco.toFixed(2)}</div>
+                    <div style="font-size:0.8rem; color:#888;">${item.descricao}</div>
+                `;
+                div.onclick = () => adicionarAoCarrinho(item.id);
+                grid.appendChild(div);
+            });
+        }
+
+        // ============================================
+        // CARRINHO
+        // ============================================
+        function adicionarAoCarrinho(id) {
+            const item = CARDAPIO.find(p => p.id === id);
+            if (!item) return;
+
+            const existente = estado.carrinho.find(i => i.id === id);
+            if (existente) {
+                existente.quantidade += 1;
+            } else {
+                estado.carrinho.push({ ...item, quantidade: 1 });
+            }
+
+            atualizarCarrinho();
+            document.getElementById('qtdCarrinho').textContent =
+                estado.carrinho.reduce((s, i) => s + i.quantidade, 0);
+
+            // Feedback visual
+            const btn = document.querySelector(`.item-cardapio:nth-child(${id})`);
+            if (btn) {
+                btn.style.borderColor = '#4caf50';
+                setTimeout(() => btn.style.borderColor = '#30363d', 300);
+            }
+        }
+
+        function removerDoCarrinho(id) {
+            const index = estado.carrinho.findIndex(i => i.id === id);
+            if (index > -1) {
+                if (estado.carrinho[index].quantidade > 1) {
+                    estado.carrinho[index].quantidade -= 1;
+                } else {
+                    estado.carrinho.splice(index, 1);
+                }
+                atualizarCarrinho();
+            }
+        }
+
+        function atualizarCarrinho() {
+            const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+            document.getElementById('carrinhoTotal').textContent = `R$ ${total.toFixed(2)}`;
+            document.getElementById('qtdCarrinho').textContent =
+                estado.carrinho.reduce((s, i) => s + i.quantidade, 0);
+
+            const lista = document.getElementById('carrinhoLista');
+            if (estado.carrinho.length === 0) {
+                lista.innerHTML = '<p style="color:#888;">Carrinho vazio</p>';
+                return;
+            }
+
+            lista.innerHTML = estado.carrinho.map(item => `
+                <div class="carrinho-item">
+                    <span>${item.emoji} ${item.nome} (${item.quantidade}x)</span>
+                    <span>
+                        R$ ${(item.preco * item.quantidade).toFixed(2)}
+                        <button class="btn btn-danger" style="padding:2px 10px; font-size:12px; margin-left:10px;" onclick="removerDoCarrinho(${item.id})">✕</button>
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function limparCarrinho() {
+            if (confirm('Limpar carrinho?')) {
+                estado.carrinho = [];
+                atualizarCarrinho();
+                document.getElementById('qtdCarrinho').textContent = '0';
+            }
+        }
+
+        // ============================================
+        // NAVEGAÇÃO
+        // ============================================
+        function verCarrinho() {
+            document.getElementById('telaCardapio').classList.add('hidden');
+            document.getElementById('telaCarrinho').classList.remove('hidden');
+        }
+
+        function voltarCardapio() {
+            document.getElementById('telaCarrinho').classList.add('hidden');
+            document.getElementById('telaCardapio').classList.remove('hidden');
+        }
+
+        function irParaPagamento() {
+            if (estado.carrinho.length === 0) {
+                alert('Carrinho vazio!');
+                return;
+            }
+            const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+            document.getElementById('pagamentoTotal').textContent = `R$ ${total.toFixed(2)}`;
+            document.getElementById('telaCarrinho').classList.add('hidden');
+            document.getElementById('telaPagamento').classList.remove('hidden');
+        }
+
+        function voltarCarrinho() {
+            document.getElementById('telaPagamento').classList.add('hidden');
+            document.getElementById('telaCarrinho').classList.remove('hidden');
+        }
+
+        // ============================================
+        // PAGAMENTO
+        // ============================================
+        function escolherPagamento(tipo) {
+            estado.formaPagamento = tipo;
+            estado.pagamentoConfirmado = false;
+
+            const detalhes = document.getElementById('detalhesPagamento');
+
+            if (tipo === 'pix') {
+                const chave = 'pix.pizzaria.ze@banco.com';
+                const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+                detalhes.innerHTML = `
+                    <div class="pix-area">
+                        <p><strong>📱 Pagamento via Pix</strong></p>
+                        <p>Valor: <strong>R$ ${total.toFixed(2)}</strong></p>
+                        <p>Chave Pix:</p>
+                        <div class="chave">${chave}</div>
+                        <button class="btn btn-primary" onclick="confirmarPix()">✅ Confirmar Pagamento</button>
+                        <div id="pixStatus"></div>
+                    </div>
+                `;
+            } else {
+                detalhes.innerHTML = `
+                    <div style="background:#161b22; padding:20px; border-radius:12px; border:1px solid #30363d;">
+                        <p>💳 Pagamento em <strong>${tipo === 'dinheiro' ? 'Dinheiro' : 'Cartão'}</strong></p>
+                        <p style="color:#888;">Confirme para finalizar o pedido.</p>
+                        <button class="btn btn-primary" onclick="confirmarPagamento()">✅ Confirmar Pagamento</button>
+                    </div>
+                `;
+            }
+        }
+
+        function confirmarPix() {
+            estado.pagamentoConfirmado = true;
+            document.getElementById('pixStatus').innerHTML =
+                '<p style="color:#4caf50;">✅ Pagamento confirmado! Prosseguindo...</p>';
+            setTimeout(irParaEndereco, 500);
+        }
+
+        function confirmarPagamento() {
+            estado.pagamentoConfirmado = true;
+            irParaEndereco();
+        }
+
+        // ============================================
+        // ENDEREÇO
+        // ============================================
+        function irParaEndereco() {
+            if (!estado.pagamentoConfirmado) {
+                alert('Confirme o pagamento primeiro!');
+                return;
+            }
+
+            document.getElementById('telaPagamento').classList.add('hidden');
+            document.getElementById('telaEndereco').classList.remove('hidden');
+
+            // Preenche endereço cadastrado
+            const endInfo = document.getElementById('enderecoInfo');
+            if (estado.cliente && estado.cliente.endereco) {
+                endInfo.innerHTML = `
+                    <div style="background:#1a2a1a; padding:15px; border-radius:12px; border:1px solid #2a4a2a; margin-bottom:15px;">
+                        <p>📍 <strong>Endereço cadastrado:</strong></p>
+                        <p>${estado.cliente.endereco}, ${estado.cliente.numero || 'S/N'}</p>
+                        <p>${estado.cliente.bairro || ''} - ${estado.cliente.cidade || ''}</p>
+                        <button class="btn btn-secondary" onclick="usarEnderecoCadastrado()">✅ Usar este endereço</button>
+                        <button class="btn btn-secondary" onclick="editarEndereco()">✏️ Editar</button>
+                    </div>
+                `;
+                document.getElementById('inputEndereco').value = estado.cliente.endereco || '';
+                document.getElementById('inputNumero').value = estado.cliente.numero || '';
+                document.getElementById('inputBairro').value = estado.cliente.bairro || '';
+                document.getElementById('inputCidade').value = estado.cliente.cidade || '';
+                document.getElementById('inputComplemento').value = estado.cliente.complemento || '';
+                document.getElementById('inputCep').value = estado.cliente.cep || '';
+            } else {
+                endInfo.innerHTML = '<p>📝 Preencha seu endereço de entrega:</p>';
+            }
+        }
+
+        function usarEnderecoCadastrado() {
+            if (estado.cliente && estado.cliente.endereco) {
+                estado.endereco.logradouro = estado.cliente.endereco || '';
+                estado.endereco.numero = estado.cliente.numero || '';
+                estado.endereco.bairro = estado.cliente.bairro || '';
+                estado.endereco.cidade = estado.cliente.cidade || '';
+                estado.endereco.complemento = estado.cliente.complemento || '';
+                estado.endereco.cep = estado.cliente.cep || '';
+                confirmarEndereco();
+            }
+        }
+
+        function editarEndereco() {
+            document.querySelector('.endereco-area').style.display = 'block';
+            document.getElementById('enderecoInfo').innerHTML = '<p>✏️ Edite seu endereço:</p>';
+        }
+
+        function buscarCep() {
+            const cep = document.getElementById('inputCep').value.replace(/\D/g, '');
+            if (cep.length !== 8) {
+                alert('Digite um CEP válido com 8 números');
+                return;
+            }
+
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.erro) {
+                        alert('CEP não encontrado');
+                        return;
+                    }
+                    document.getElementById('inputEndereco').value = data.logradouro || '';
+                    document.getElementById('inputBairro').value = data.bairro || '';
+                    document.getElementById('inputCidade').value = `${data.localidade} - ${data.uf}`;
+                    estado.endereco.cep = cep;
+                })
+                .catch(() => alert('Erro ao buscar CEP'));
+        }
+
+        // ============================================
+        // CONFIRMAR PEDIDO
+        // ============================================
+        async function confirmarEndereco() {
+            const endereco = document.getElementById('inputEndereco').value.trim();
+            const numero = document.getElementById('inputNumero').value.trim();
+            const bairro = document.getElementById('inputBairro').value.trim();
+            const cidade = document.getElementById('inputCidade').value.trim();
+            const complemento = document.getElementById('inputComplemento').value.trim();
+            const cep = document.getElementById('inputCep').value.trim();
+
+            if (!endereco || !numero || !bairro || !cidade) {
+                alert('Preencha Rua, Número, Bairro e Cidade');
+                return;
+            }
+
+            estado.endereco.logradouro = endereco;
+            estado.endereco.numero = numero;
+            estado.endereco.bairro = bairro;
+            estado.endereco.cidade = cidade;
+            estado.endereco.complemento = complemento;
+            estado.endereco.cep = cep;
+
+            // Salva endereço no cliente
+            if (estado.cliente) {
+                try {
+                    await fetch(`${API_URL}/clientes/${estado.cliente.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            nome: estado.cliente.nome,
+                            endereco: endereco,
+                            numero: numero,
+                            bairro: bairro,
+                            cidade: cidade,
+                            complemento: complemento,
+                            cep: cep
+                        })
+                    });
+                } catch (error) {
+                    console.error('Erro ao salvar endereço:', error);
+                }
+            }
+
+            // Cria pedido
+            await criarPedido();
+        }
+
+        async function criarPedido() {
+            try {
+                const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+                const itensTexto = estado.carrinho.map(i =>
+                    `${i.quantidade}x ${i.nome} (R$ ${(i.preco * i.quantidade).toFixed(2)})`
+                ).join('\n');
+
+                const enderecoCompleto =
+                    `${estado.endereco.logradouro}, ${estado.endereco.numero} - ${estado.endereco.bairro}, ${estado.endereco.cidade}`;
+
+                const response = await fetch(`${API_URL}/pedidos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cliente_id: estado.cliente.id,
+                        itens: itensTexto,
+                        total: total,
+                        forma_pagamento: estado.formaPagamento,
+                        endereco_entrega: enderecoCompleto,
+                        observacao: estado.endereco.complemento || ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    estado.pedidoAtual = data.pedido;
+                    mostrarStatus(data.pedido);
+                } else {
+                    alert('Erro ao criar pedido: ' + data.erro);
+                }
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+                alert('Erro ao criar pedido');
+            }
+        }
+
+        // ============================================
+        // STATUS
+        // ============================================
+        function mostrarStatus(pedido) {
+            document.getElementById('telaEndereco').classList.add('hidden');
+            document.getElementById('telaStatus').classList.remove('hidden');
+
+            const statusMap = {
+                'recebido': { icone: '📩', nome: 'Pedido Recebido' },
+                'preparo': { icone: '👨‍🍳', nome: 'Em Preparo' },
+                'saiu': { icone: '🚀', nome: 'Saiu para Entrega' },
+                'entregue': { icone: '✅', nome: 'Pedido Entregue' },
+                'cancelado': { icone: '❌', nome: 'Cancelado' }
+            };
+
+            const statusList = ['recebido', 'preparo', 'saiu', 'entregue'];
+            const container = document.getElementById('statusContainer');
+
+            let html = `<p style="color:#888;">Pedido #${pedido.numero_pedido} - ${new Date(pedido.data_pedido).toLocaleString()}</p>`;
+
+            statusList.forEach((s, index) => {
+                const atual = pedido.status === s;
+                const concluido = statusList.indexOf(s) < statusList.indexOf(pedido.status);
+
+                html += `
+                    <div class="status-item ${concluido ? 'concluido' : ''} ${atual ? 'ativo' : ''}">
+                        <span style="font-size:1.3rem;">${statusMap[s].icone}</span>
+                        <div>
+                            <div><strong>${statusMap[s].nome}</strong></div>
+                            <div style="font-size:0.8rem; color:#888;">
+                                ${concluido ? '✅ Concluído' : atual ? '⏳ Em andamento' : '⏳ Pendente'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div style="background:#161b22; padding:15px; border-radius:12px; margin-top:15px;">
+                    <p><strong>📍 Entrega:</strong> ${pedido.endereco_entrega}</p>
+                    <p><strong>💰 Total:</strong> R$ ${pedido.total.toFixed(2)}</p>
+                    <p><strong>💳 Pagamento:</strong> ${pedido.forma_pagamento.toUpperCase()}</p>
+                </div>
+            `;
+
+            container.innerHTML = html;
+
+            // Inicia verificação de status
+            verificarStatusPeriodicamente(pedido.id);
+        }
+
+        function verificarStatusPeriodicamente(pedidoId) {
+            let tentativas = 0;
+            const maxTentativas = 30;
+
+            const interval = setInterval(async () => {
+                tentativas++;
+                try {
+                    const response = await fetch(`${API_URL}/pedidos/${pedidoId}`);
+                    const data = await response.json();
+
+                    if (data.status !== estado.pedidoAtual?.status) {
+                        estado.pedidoAtual = data;
+                        // Atualiza status sem recarregar tudo
+                        const statusMap = {
+                            'recebido': { icone: '📩', nome: 'Pedido Recebido' },
+                            'preparo': { icone: '👨‍🍳', nome: 'Em Preparo' },
+                            'saiu': { icone: '🚀', nome: 'Saiu para Entrega' },
+                            'entregue': { icone: '✅', nome: 'Pedido Entregue' },
+                            'cancelado': { icone: '❌', nome: 'Cancelado' }
+                        };
+
+                        const statusList = ['recebido', 'preparo', 'saiu', 'entregue'];
+                        const container = document.getElementById('statusContainer');
+                        const statusItems = container.querySelectorAll('.status-item');
+
+                        statusItems.forEach((item, index) => {
+                            const s = statusList[index];
+                            const atual = data.status === s;
+                            const concluido = statusList.indexOf(s) < statusList.indexOf(data.status);
+
+                            item.className = `status-item ${concluido ? 'concluido' : ''} ${atual ? 'ativo' : ''}`;
+                            const texto = item.querySelector('div div:first-child');
+                            if (texto) texto.textContent = statusMap[s].nome;
+
+                            const subtitulo = item.querySelector('div div:last-child');
+                            if (subtitulo) {
+                                subtitulo.textContent = concluido ? '✅ Concluído' : atual ? '⏳ Em andamento' :
+                                    '⏳ Pendente';
+                            }
+                        });
+
+                        // Se entregue, para o intervalo
+                        if (data.status === 'entregue' || data.status === 'cancelado') {
+                            clearInterval(interval);
+                        }
+                    }
+
+                    if (tentativas >= maxTentativas) {
+                        clearInterval(interval);
+                    }
+                } catch (error) {
+                    console.error('Erro ao verificar status:', error);
+                }
+            }, 5000);
+        }
+
+        // ============================================
+        // NOVO PEDIDO
+        // ============================================
+        function novoPedido() {
+            estado.carrinho = [];
+            estado.formaPagamento = null;
+            estado.pagamentoConfirmado = false;
+            estado.pedidoAtual = null;
+            estado.endereco = { cep: '', logradouro: '', numero: '', bairro: '', cidade: '', complemento: '' };
+
+            document.getElementById('telaStatus').classList.add('hidden');
+            document.getElementById('telaCardapio').classList.remove('hidden');
+            document.getElementById('telaCarrinho').classList.add('hidden');
+            document.getElementById('telaPagamento').classList.add('hidden');
+            document.getElementById('telaEndereco').classList.add('hidden');
+            document.getElementById('qtdCarrinho').textContent = '0';
+            atualizarCarrinho();
+        }
+
+        // ============================================
+        // UTILITÁRIOS
+        // ============================================
+        function formatarTelefone(telefone) {
+            const tel = telefone.replace(/\D/g, '');
+            if (tel.length === 11) {
+                return `(${tel.slice(0,2)}) ${tel.slice(2,7)}-${tel.slice(7)}`;
+            }
+            return telefone;
+        }
+
+        // ============================================
+        // INICIAR
+        // ============================================
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

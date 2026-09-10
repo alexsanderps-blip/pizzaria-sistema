@@ -1,0 +1,36 @@
+# Dependências
+node_modules/
+
+# Banco de dados
+database/
+*.db
+*.sqlite
+*.sqlite3
+
+# WhatsApp
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+dist/
+build/
+
+# Arquivos de teste
+teste.html

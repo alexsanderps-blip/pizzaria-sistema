@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Painel Gerencial - Pizzaria</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d1117;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #30363d;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #1a5a3a;
+            color: #6bff6b;
+            font-size: 0.85rem;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .tabs button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            background: #21262d;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .tabs button:hover {
+            background: #30363d;
+            color: #fff;
+        }
+        .tabs button.active {
+            background: #1f883d;
+            color: #fff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+        }
+        .card .numero {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4caf50;
+        }
+        .card .label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+        .table-container {
+            background: #161b22;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            overflow: hidden;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #21262d;
+        }
+        th {
+            background: #0d1117;
+            color: #888;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        td {
+            font-size: 0.9rem;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .status-recebido {
+            background: #1a2a4a;
+            color: #58a6ff;
+        }
+        .status-preparo {
+            background: #3a3a1a;
+            color: #ffb74d;
+        }
+        .status-saiu {
+            background: #1a3a1a;
+            color: #4caf50;
+        }
+        .status-entregue {
+            background: #1a5a3a;
+            color: #6bff6b;
+        }
+        .status-cancelado {
+            background: #5a1a1a;
+            color: #ff6b6b;
+        }
+        .btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .btn-primary {
+            background: #1f883d;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+        .btn-secondary {
+            background: #21262d;
+            color: #aaa;
+        }
+        .btn-secondary:hover {
+            background: #30363d;
+            color: #fff;
+        }
+        .btn-danger {
+            background: #da3633;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #f44336;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: #161b22;
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid #30363d;
+        }
+        .modal-content h2 {
+            margin-bottom: 15px;
+        }
+        .modal-content input,
+        .modal-content select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            background: #0d1117;
+            color: #fff;
+            border: 1px solid #30363d;
+        }
+        .modal-content .botoes {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .filtros {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .filtros input,
+        .filtros select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #0d1117;
+            color: #fff;
+            border: 1px solid #30363d;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 150px;
+        }
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr 1fr;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .modal-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Pizzaria do Zé - Gerencial</h1>
+            <div>
+                <span class="status">🟢 Online</span>
+                <span style="margin-left:15px; color:#888;">Atualizado: <span id="horaAtual"></span></span>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="active" data-tab="dashboard">📊 Dashboard</button>
+            <button data-tab="pedidos">📦 Pedidos</button>
+            <button data-tab="clientes">👤 Clientes</button>
+            <button data-tab="motoboys">🛵 Motoboys</button>
+            <button data-tab="relatorios">📈 Relatórios</button>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="cards" id="dashboardCards">
+                <div class="card">
+                    <div class="numero" id="totalHoje">0</div>
+                    <div class="label">📦 Pedidos Hoje</div>
+                </div>
+                <div class="card">
+                    <div class="numero" id="faturamentoHoje">R$ 0</div>
+                    <div class="label">💰 Faturamento Hoje</div>
+                </div>
+                <div class="card">
+                    <div class="numero" id="pedidosRecebidos">0</div>
+                    <div class="label">📩 Recebidos</div>
+                </div>
+                <div class="card">
+                    <div class="numero" id="pedidosPreparo">0</div>
+                    <div class="label">👨‍🍳 Em Preparo</div>
+                </div>
+                <div class="card">
+                    <div class="numero" id="pedidosEntrega">0</div>
+                    <div class="label">🚀 Em Entrega</div>
+                </div>
+                <div class="card">
+                    <div class="numero" id="pedidosEntregues">0</div>
+                    <div class="label">✅ Entregues</div>
+                </div>
+            </div>
+            <h3 style="margin:20px 0 10px;">📋 Últimos Pedidos</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#Pedido</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ultimosPedidos"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pedidos -->
+        <div id="tab-pedidos" class="tab-content">
+            <div class="filtros">
+                <input class="search-input" id="filtroPedido" placeholder="🔍 Buscar por # ou cliente...">
+                <select id="filtroStatus">
+                    <option value="">Todos os status</option>
+                    <option value="recebido">Recebido</option>
+                    <option value="preparo">Em Preparo</option>
+                    <option value="saiu">Saiu para Entrega</option>
+                    <option value="entregue">Entregue</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+                <button class="btn btn-primary" onclick="carregarPedidos()">🔄 Atualizar</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#Pedido</th>
+                            <th>Cliente</th>
+                            <th>Telefone</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Motoboy</th>
+                            <th>Data</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaPedidos"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Clientes -->
+        <div id="tab-clientes" class="tab-content">
+            <div class="filtros">
+                <input class="search-input" id="filtroCliente" placeholder="🔍 Buscar cliente...">
+                <button class="btn btn-primary" onclick="carregarClientes()">🔄 Atualizar</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                            <th>Endereço</th>
+                            <th>Pedidos</th>
+                            <th>Total Gasto</th>
+                            <th>Último Pedido</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaClientes"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Motoboys -->
+        <div id="tab-motoboys" class="tab-content">
+            <button class="btn btn-primary" onclick="abrirModalMotoboy()">➕ Novo Motoboy</button>
+            <div style="margin-top:15px;" class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                            <th>Veículo</th>
+                            <th>Placa</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaMotoboys"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Relatórios -->
+        <div id="tab-relatorios" class="tab-content">
+            <div class="filtros">
+                <select id="periodoRelatorio">
+                    <option value="dia">Hoje</option>
+                    <option value="semana">Última Semana</option>
+                    <option value="mes">Último Mês</option>
+                </select>
+                <button class="btn btn-primary" onclick="carregarRelatorios()">📊 Gerar</button>
+            </div>
+            <div class="cards" id="relatorioCards"></div>
+            <div class="table-container" style="margin-top:15px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Pedidos</th>
+                            <th>Vendas</th>
+                            <th>Ticket Médio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaRelatorios"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content" id="modalContent">
+            <h2 id="modalTitulo">Título</h2>
+            <div id="modalBody"></div>
+            <div class="botoes">
+                <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+                <button class="btn btn-primary" id="modalSalvar">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // API
+        // ============================================
+        const API_URL = 'http://localhost:3000/api';
+
+        // ============================================
+        // NAVEGAÇÃO
+        // ============================================
+        document.querySelectorAll('.tabs button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+
+                // Carrega dados da tab
+                switch (btn.dataset.tab) {
+                    case 'dashboard':
+                        carregarDashboard();
+                        break;
+                    case 'pedidos':
+                        carregarPedidos();
+                        break;
+                    case 'clientes':
+                        carregarClientes();
+                        break;
+                    case 'motoboys':
+                        carregarMotoboys();
+                        break;
+                    case 'relatorios':
+                        carregarRelatorios();
+                        break;
+                }
+            });
+        });
+
+        // ============================================
+        // DASHBOARD
+        // ============================================
+        async function carregarDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/dashboard`);
+                const data = await response.json();
+
+                document.getElementById('totalHoje').textContent = data.total_hoje || 0;
+                document.getElementById('faturamentoHoje').textContent =
+                    `R$ ${(data.faturamento_hoje || 0).toFixed(2)}`;
+
+                const statusCount = {};
+                data.por_status.forEach(s => statusCount[s.status] = s.total);
+
+                document.getElementById('pedidosRecebidos').textContent = statusCount.recebido || 0;
+                document.getElementById('pedidosPreparo').textContent = statusCount.preparo || 0;
+                document.getElementById('pedidosEntrega').textContent = statusCount.saiu || 0;
+                document.getElementById('pedidosEntregues').textContent = statusCount.entregue || 0;
+
+                const tbody = document.getElementById('ultimosPedidos');
+                tbody.innerHTML = data.ultimos_pedidos.map(p => `
+                    <tr>
+                        <td><strong>#${p.numero_pedido}</strong></td>
+                        <td>${p.cliente_nome || 'Anônimo'}</td>
+                        <td>R$ ${(p.total || 0).toFixed(2)}</td>
+                        <td><span class="status-badge status-${p.status}">${p.status}</span></td>
+                        <td>${new Date(p.data_pedido).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="verPedido(${p.id})">👁️</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('horaAtual').textContent = new Date().toLocaleString();
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        // ============================================
+        // PEDIDOS
+        // ============================================
+        async function carregarPedidos() {
+            try {
+                const response = await fetch(`${API_URL}/pedidos`);
+                const data = await response.json();
+
+                const filtro = document.getElementById('filtroPedido').value.toLowerCase();
+                const statusFiltro = document.getElementById('filtroStatus').value;
+
+                let filtered = data;
+                if (filtro) {
+                    filtered = filtered.filter(p =>
+                        p.numero_pedido.toString().includes(filtro) ||
+                        (p.cliente_nome || '').toLowerCase().includes(filtro)
+                    );
+                }
+                if (statusFiltro) {
+                    filtered = filtered.filter(p => p.status === statusFiltro);
+                }
+
+                const tbody = document.getElementById('tabelaPedidos');
+                tbody.innerHTML = filtered.map(p => `
+                    <tr>
+                        <td><strong>#${p.numero_pedido}</strong></td>
+                        <td>${p.cliente_nome || 'Anônimo'}</td>
+                        <td>${p.cliente_telefone || '-'}</td>
+                        <td>R$ ${(p.total || 0).toFixed(2)}</td>
+                        <td><span class="status-badge status-${p.status}">${p.status}</span></td>
+                        <td>${p.motoboy_nome || '-'}</td>
+                        <td>${new Date(p.data_pedido).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="abrirModalStatus(${p.id})">📌 Status</button>
+                            <button class="btn btn-secondary" onclick="verPedido(${p.id})">👁️</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        // ============================================
+        // MODAL STATUS
+        // ============================================
+        function abrirModalStatus(pedidoId) {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modalContent');
+            document.getElementById('modalTitulo').textContent = `📌 Atualizar Status - Pedido #${pedidoId}`;
+
+            const statusOptions = ['recebido', 'preparo', 'saiu', 'entregue', 'cancelado'];
+
+            document.getElementById('modalBody').innerHTML = `
+                <select id="statusSelect">
+                    ${statusOptions.map(s => `<option value="${s}">${s}</option>`).join('')}
+                </select>
+                <select id="motoboySelect">
+                    <option value="">Sem motoboy</option>
+                </select>
+                <input id="obsStatus" placeholder="Observação (opcional)">
+            `;
+
+            // Carrega motoboys
+            fetch(`${API_URL}/motoboys`)
+                .then(res => res.json())
+                .then(motoboys => {
+                    const select = document.getElementById('motoboySelect');
+                    motoboys.forEach(m => {
+                        select.innerHTML += `<option value="${m.id}">${m.nome}</option>`;
+                    });
+                });
+
+            document.getElementById('modalSalvar').onclick = () => {
+                const status = document.getElementById('statusSelect').value;
+                const motoboy_id = document.getElementById('motoboySelect').value;
+                const observacao = document.getElementById('obsStatus').value;
+
+                fetch(`${API_URL}/pedidos/${pedidoId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, motoboy_id, observacao })
+                })
+                .then(() => {
+                    fecharModal();
+                    carregarPedidos();
+                    carregarDashboard();
+                })
+                .catch(err => console.error('❌ Erro:', err));
+            };
+
+            modal.classList.add('active');
+        }
+
+        // ============================================
+        // CLIENTES
+        // ============================================
+        async function carregarClientes() {
+            try {
+                const response = await fetch(`${API_URL}/clientes`);
+                const data = await response.json();
+
+                const filtro = document.getElementById('filtroCliente').value.toLowerCase();
+
+                let filtered = data;
+                if (filtro) {
+                    filtered = filtered.filter(c =>
+                        (c.nome || '').toLowerCase().includes(filtro) ||
+                        c.telefone.includes(filtro)
+                    );
+                }
+
+                const tbody = document.getElementById('tabelaClientes');
+                tbody.innerHTML = filtered.map(c => `
+                    <tr>
+                        <td>${c.id}</td>
+                        <td>${c.nome || 'Sem nome'}</td>
+                        <td>${formatarTelefone(c.telefone)}</td>
+                        <td>${c.endereco ? `${c.endereco}, ${c.numero || ''}` : '-'}</td>
+                        <td>${c.total_pedidos || 0}</td>
+                        <td>R$ ${(c.total_gasto || 0).toFixed(2)}</td>
+                        <td>${c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString() : '-'}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="verCliente(${c.id})">👁️</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        // ============================================
+        // MOTOBOYS
+        // ============================================
+        async function carregarMotoboys() {
+            try {
+                const response = await fetch(`${API_URL}/motoboys`);
+                const data = await response.json();
+
+                const tbody = document.getElementById('tabelaMotoboys');
+                tbody.innerHTML = data.map(m => `
+                    <tr>
+                        <td>${m.id}</td>
+                        <td>${m.nome}</td>
+                        <td>${formatarTelefone(m.telefone)}</td>
+                        <td>${m.veiculo || '-'}</td>
+                        <td>${m.placa || '-'}</td>
+                        <td>
+                            <span class="status-badge ${m.status === 'disponivel' ? 'status-preparo' : 'status-saiu'}">
+                                ${m.status === 'disponivel' ? '🟢 Disponível' : '🟡 Ocupado'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="toggleMotoboyStatus(${m.id}, '${m.status}')">
+                                ${m.status === 'disponivel' ? '🔴 Ocupar' : '🟢 Liberar'}
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        function toggleMotoboyStatus(id, statusAtual) {
+            const novoStatus = statusAtual === 'disponivel' ? 'ocupado' : 'disponivel';
+            fetch(`${API_URL}/motoboys/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: novoStatus })
+            })
+            .then(() => carregarMotoboys())
+            .catch(err => console.error('❌ Erro:', err));
+        }
+
+        // ============================================
+        // MODAL MOTOBOY
+        // ============================================
+        function abrirModalMotoboy() {
+            const modal = document.getElementById('modal');
+            document.getElementById('modalTitulo').textContent = '➕ Novo Motoboy';
+
+            document.getElementById('modalBody').innerHTML = `
+                <input id="motoNome" placeholder="Nome completo">
+                <input id="motoTelefone" placeholder="Telefone (com DDD)">
+                <input id="motoVeiculo" placeholder="Veículo (ex: Honda Biz)">
+                <input id="motoPlaca" placeholder="Placa">
+            `;
+
+            document.getElementById('modalSalvar').onclick = () => {
+                const nome = document.getElementById('motoNome').value.trim();
+                const telefone = document.getElementById('motoTelefone').value.trim();
+                const veiculo = document.getElementById('motoVeiculo').value.trim();
+                const placa = document.getElementById('motoPlaca').value.trim();
+
+                if (!nome || !telefone) {
+                    alert('Nome e telefone são obrigatórios');
+                    return;
+                }
+
+                fetch(`${API_URL}/motoboys`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, telefone, veiculo, placa })
+                })
+                .then(() => {
+                    fecharModal();
+                    carregarMotoboys();
+                })
+                .catch(err => console.error('❌ Erro:', err));
+            };
+
+            modal.classList.add('active');
+        }
+
+        // ============================================
+        // RELATÓRIOS
+        // ============================================
+        async function carregarRelatorios() {
+            try {
+                const periodo = document.getElementById('periodoRelatorio').value;
+                const response = await fetch(`${API_URL}/relatorios/vendas?periodo=${periodo}`);
+                const data = await response.json();
+
+                const totalPedidos = data.reduce((s, d) => s + d.total_pedidos, 0);
+                const totalVendas = data.reduce((s, d) => s + d.total_vendas, 0);
+                const ticketMedio = totalPedidos > 0 ? totalVendas / totalPedidos : 0;
+
+                document.getElementById('relatorioCards').innerHTML = `
+                    <div class="card">
+                        <div class="numero">${totalPedidos}</div>
+                        <div class="label">📦 Total Pedidos</div>
+                    </div>
+                    <div class="card">
+                        <div class="numero">R$ ${totalVendas.toFixed(2)}</div>
+                        <div class="label">💰 Total Vendas</div>
+                    </div>
+                    <div class="card">
+                        <div class="numero">R$ ${ticketMedio.toFixed(2)}</div>
+                        <div class="label">🎫 Ticket Médio</div>
+                    </div>
+                    <div class="card">
+                        <div class="numero">${data.length}</div>
+                        <div class="label">📅 Dias no período</div>
+                    </div>
+                `;
+
+                const tbody = document.getElementById('tabelaRelatorios');
+                tbody.innerHTML = data.map(d => `
+                    <tr>
+                        <td>${new Date(d.data).toLocaleDateString()}</td>
+                        <td>${d.total_pedidos}</td>
+                        <td>R$ ${d.total_vendas.toFixed(2)}</td>
+                        <td>R$ ${d.ticket_medio.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('❌ Erro:', error);
+            }
+        }
+
+        // ============================================
+        // MODAL
+        // ============================================
+        function fecharModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // ============================================
+        // UTILITÁRIOS
+        // ============================================
+        function formatarTelefone(telefone) {
+            if (!telefone) return '-';
+            const tel = telefone.replace(/\D/g, '');
+            if (tel.length === 11) {
+                return `(${tel.slice(0,2)}) ${tel.slice(2,7)}-${tel.slice(7)}`;
+            }
+            return telefone;
+        }
+
+        function verPedido(id) {
+            alert(`Ver pedido #${id} - Funcionalidade em desenvolvimento`);
+        }
+
+        function verCliente(id) {
+            alert(`Ver cliente #${id} - Funcionalidade em desenvolvimento`);
+        }
+
+        // ============================================
+        // INICIAR
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarDashboard();
+
+            // Atualiza relógio
+            setInterval(() => {
+                document.getElementById('horaAtual').textContent = new Date().toLocaleString();
+            }, 10000);
+
+            // Filtros
+            document.getElementById('filtroPedido').addEventListener('input', carregarPedidos);
+            document.getElementById('filtroStatus').addEventListener('change', carregarPedidos);
+            document.getElementById('filtroCliente').addEventListener('input', carregarClientes);
+        });
+    </script>
+</body>
+</html>

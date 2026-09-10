@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>🍕 Pizzaria do Zé</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0d1117;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .totem {
+            max-width: 950px;
+            width: 100%;
+            background: #161b22;
+            border-radius: 24px;
+            padding: 30px;
+            border: 2px solid #30363d;
+            min-height: 650px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        .totem-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .totem-header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .totem-header .pedido-num {
+            background: #21262d;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+        .totem-header .pedido-num span {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .voz-indicador {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: #21262d;
+            color: #888;
+            transition: 0.3s;
+        }
+        .voz-indicador.conectado {
+            background: #1a2a4a;
+            color: #58a6ff;
+        }
+        .voz-indicador.ativo {
+            background: #1a3a1a;
+            color: #4caf50;
+            animation: pulse-voz 1s infinite;
+        }
+        .voz-indicador.falando {
+            background: #3a2a1a;
+            color: #ffb74d;
+            animation: pulse-voz 0.6s infinite;
+        }
+        .voz-indicador.desligado {
+            background: #3a1a1a;
+            color: #ff6b6b;
+        }
+        @keyframes pulse-voz {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-area {
+            background: #0d1117;
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 380px;
+            max-height: 460px;
+            overflow-y: auto;
+            border: 1px solid #21262d;
+            margin-bottom: 15px;
+            scroll-behavior: smooth;
+        }
+        .chat-area::-webkit-scrollbar { width: 6px; }
+        .chat-area::-webkit-scrollbar-track { background: #0d1117; }
+        .chat-area::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+
+        .mensagem-chat {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+        .mensagem-chat.gemini { flex-direction: row; }
+        .mensagem-chat.usuario { flex-direction: row-reverse; }
+        .mensagem-chat.sistema { flex-direction: row; opacity: 0.7; }
+        .mensagem-chat .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .mensagem-chat.gemini .avatar { background: #1a2a4a; }
+        .mensagem-chat.usuario .avatar { background: #1a3a1a; }
+        .mensagem-chat.sistema .avatar { background: #1a1a1a; }
+        .mensagem-chat .bolha {
+            padding: 12px 16px;
+            border-radius: 16px;
+            max-width: 80%;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .mensagem-chat.gemini .bolha {
+            background: #1a2a4a;
+            color: #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .mensagem-chat.usuario .bolha {
+            background: #1a3a1a;
+            color: #e0e0e0;
+            border-bottom-right-radius: 4px;
+        }
+        .mensagem-chat.sistema .bolha {
+            background: #1a1a1a;
+            color: #666;
+            font-style: italic;
+            border: 1px dashed #30363d;
+        }
+        .mensagem-chat .bolha .hora {
+            font-size: 0.6rem;
+            color: #555;
+            margin-top: 5px;
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .botoes-rapidos {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+            min-height: 40px;
+        }
+        .botoes-rapidos button {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .botoes-rapidos button:hover {
+            border-color: #4caf50;
+            color: #fff;
+            background: #1a2a1a;
+        }
+        .botoes-rapidos button.primario {
+            background: #1f883d;
+            color: #fff;
+            border-color: #1f883d;
+        }
+        .botoes-rapidos button.primario:hover { background: #2ea043; }
+        .botoes-rapidos button.atendente {
+            background: #1a2a4a;
+            color: #58a6ff;
+            border-color: #1a2a4a;
+        }
+        .botoes-rapidos button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 12px;
+            background: #0d1117;
+            color: #fff;
+            border: 1px solid #30363d;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        .input-area input:focus { outline: none; border-color: #4caf50; }
+        .input-area input::placeholder { color: #555; }
+        .input-area input.bloqueado {
+            background: #1a0a0a;
+            border-color: #5a1a1a;
+            color: #555;
+        }
+        .input-area input.bloqueado::placeholder { color: #333; }
+        .input-area button {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        .input-area button.enviar {
+            background: #1f883d;
+            color: #fff;
+        }
+        .input-area button.enviar:hover { background: #2ea043; }
+        .input-area button.enviar:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .voz-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #0d1117;
+            border-radius: 10px;
+            margin: 5px 0;
+            border: 1px solid #21262d;
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .voz-status-bar .barra {
+            flex: 1;
+            height: 4px;
+            background: #21262d;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .voz-status-bar .barra .progresso {
+            height: 100%;
+            background: #4caf50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .voz-status-bar.ativo .barra .progresso { animation: onda 1s infinite; }
+        @keyframes onda {
+            0% { width: 10%; }
+            50% { width: 80%; }
+            100% { width: 10%; }
+        }
+        .voz-status-bar.desligado .barra .progresso { background: #ff6b6b; }
+
+        .loading-dots::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+
+        .badge-atendente {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            background: #1a2a4a;
+            color: #58a6ff;
+            margin-left: 8px;
+        }
+
+        .bloqueio-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #fff;
+            backdrop-filter: blur(5px);
+        }
+        .bloqueio-overlay.ativo { display: flex; }
+        .bloqueio-overlay .mensagem {
+            background: #161b22;
+            padding: 30px 50px;
+            border-radius: 20px;
+            border: 2px solid #ffb74d;
+            text-align: center;
+        }
+        .bloqueio-overlay .mensagem .icone {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .bloqueio-overlay .mensagem .voz-info {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 10px;
+        }
+        .bloqueio-overlay .mensagem .voz-info span { color: #58a6ff; }
+
+        /* 🔥 OVERLAY DE ATIVAÇÃO (iPhone) */
+        .ativar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 30px;
+        }
+        .ativar-overlay.ativo { display: flex; }
+        .ativar-overlay .icone {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+        .ativar-overlay h2 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        .ativar-overlay p {
+            color: #888;
+            margin-bottom: 30px;
+            max-width: 400px;
+            font-size: 0.95rem;
+        }
+        .ativar-overlay button {
+            background: #1f883d;
+            color: #fff;
+            border: none;
+            padding: 20px 60px;
+            font-size: 1.3rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .ativar-overlay button:hover { background: #2ea043; transform: scale(1.05); }
+
+        @media (max-width: 700px) {
+            .totem { padding: 15px; min-height: auto; }
+            .mensagem-chat .bolha { max-width: 90%; font-size: 0.85rem; }
+            .input-area { flex-wrap: wrap; }
+            .input-area input { min-width: 100%; }
+            .input-area button { flex: 1; justify-content: center; }
+            .bloqueio-overlay .mensagem { padding: 20px 30px; font-size: 1.2rem; }
+            .ativar-overlay h2 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🔥 OVERLAY DE ATIVAÇÃO (iPhone/iOS) -->
+    <div class="ativar-overlay" id="ativarOverlay">
+        <div class="icone">🎤</div>
+        <h2>Toque para Ativar o Microfone</h2>
+        <p>O iPhone/iPad exige um toque do usuário para permitir microfone e áudio.</p>
+        <button id="btnAtivar">✅ ATIVAR AGORA</button>
+    </div>
+
+    <div class="bloqueio-overlay" id="bloqueioOverlay">
+        <div class="mensagem">
+            <span class="icone">🔊</span>
+            <p id="bloqueioTexto">Gemini está falando... Aguarde</p>
+            <div class="voz-info">
+                🎤 Voz: <span>Zubenelgenubi</span> | Modelo: <span>gemini-3.1-flash-live-preview</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="totem" id="totem">
+        <div class="totem-header">
+            <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                <h1>🍕 Pizzaria do Zé</h1>
+                <span class="voz-indicador" id="vozIndicador">🔇 Voz</span>
+                <span class="badge-atendente">👨‍🍳 Atendente</span>
+            </div>
+            <div class="pedido-num">
+                Pedido #<span id="pedidoNumero">---</span>
+            </div>
+        </div>
+
+        <div class="voz-status-bar" id="vozStatusBar">
+            <span id="vozStatusIcone">🎤</span>
+            <span id="vozStatusTexto">🎤 Ouvindo sempre... Fale!</span>
+            <div class="barra">
+                <div class="progresso" id="vozProgresso"></div>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div id="chatContainer"></div>
+        </div>
+
+        <div class="botoes-rapidos" id="botoesRapidos"></div>
+
+        <div class="input-area">
+            <input type="text" id="inputUsuario" placeholder="🎤 Ouvindo... Fale!" autofocus>
+            <button class="enviar" id="btnEnviar">➤</button>
+        </div>
+    </div>
+
+    <!-- ==========================================
+    JAVASCRIPT - GEMINI LIVE + SALVAR PEDIDOS
+    ========================================== -->
+    <script>
+        // ============================================
+        // 0. CONFIGURAÇÃO
+        // ============================================
+
+        const MODELO_LIVE = 'gemini-3.1-flash-live-preview';
+        const MODELO_TEXTO = 'gemini-2.5-flash';
+        const SAMPLE_RATE = 24000;
+
+        const VOZ_CONFIG = {
+            nome: 'Zubenelgenubi',
+            idioma: 'pt-BR'
+        };
+
+        // ============================================
+        // 1. CARDÁPIO
+        // ============================================
+        const CARDAPIO = [
+            { id: 1, nome: 'Marguerita', preco: 39.90, descricao: 'Mussarela, tomate, manjericão', emoji: '🧀' },
+            { id: 2, nome: 'Portuguesa', preco: 42.90, descricao: 'Mussarela, presunto, ovo, cebola, azeitona', emoji: '🥓' },
+            { id: 3, nome: 'Calabresa', preco: 41.90, descricao: 'Mussarela, calabresa, cebola', emoji: '🌶️' },
+            { id: 4, nome: 'Frango com Catupiry', preco: 44.90, descricao: 'Frango, catupiry, milho', emoji: '🧄' },
+            { id: 5, nome: 'Quatro Queijos', preco: 43.90, descricao: 'Mussarela, provolone, parmesão, gorgonzola', emoji: '🧀' },
+            { id: 6, nome: 'Chocolate', preco: 39.90, descricao: 'Chocolate, morango', emoji: '🍫' },
+            { id: 7, nome: 'Pepperoni', preco: 45.90, descricao: 'Mussarela, pepperoni, oregano', emoji: '🌶️' },
+            { id: 8, nome: 'Vegetariana', preco: 41.90, descricao: 'Mussarela, palmito, champignon, azeitona', emoji: '🥬' },
+        ];
+
+        const NUMEROS_EXTENSO = {
+            'um': 1, 'dois': 2, 'três': 3, 'quatro': 4, 'cinco': 5,
+            'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9, 'dez': 10
+        };
+
+        // ============================================
+        // 2. ESTADO
+        // ============================================
+        const estado = {
+            etapa: 'boas-vindas',
+            carrinho: [],
+            formaPagamento: null,
+            pagamentoConfirmado: false,
+            endereco: { cep: '', logradouro: '', numero: '', bairro: '', cidade: '', complemento: '' },
+            numeroPedido: 0,
+            statusAtual: 0,
+            historico: [],
+            processando: false,
+            estaFalando: false,
+            inputBloqueado: false,
+            ouvindo: false,
+            ultimaFala: '',
+            processandoVoz: false,
+            microfoneAtivo: true,
+            telefone: null,
+            clienteId: null,
+        };
+
+        // ============================================
+        // 3. ELEMENTOS
+        // ============================================
+        const chatContainer = document.getElementById('chatContainer');
+        const chatArea = document.getElementById('chatArea');
+        const inputUsuario = document.getElementById('inputUsuario');
+        const btnEnviar = document.getElementById('btnEnviar');
+        const botoesRapidos = document.getElementById('botoesRapidos');
+        const vozIndicador = document.getElementById('vozIndicador');
+        const vozStatusBar = document.getElementById('vozStatusBar');
+        const vozStatusIcone = document.getElementById('vozStatusIcone');
+        const vozStatusTexto = document.getElementById('vozStatusTexto');
+        const pedidoNumeroSpan = document.getElementById('pedidoNumero');
+        const bloqueioOverlay = document.getElementById('bloqueioOverlay');
+        const ativarOverlay = document.getElementById('ativarOverlay');
+        const btnAtivar = document.getElementById('btnAtivar');
+
+        let reconhecimento = null;
+        let estaOuvindo = false;
+        let silencioTimeout = null;
+        let scrollTimeout = null;
+        let microfoneAtivo = true;
+
+        // Gemini Live
+        let ws = null;
+        let wsConectado = false;
+        let setupCompleto = false;
+        let audioContext = null;
+        let filaAudio = [];
+        let reproduzindo = false;
+        let fonteAtual = null;
+        let textoPendente = null;
+
+        // 🔥 A API Key NÃO deve ser colocada aqui no código
+// Ela será carregada do servidor via /api/config
+        let API_KEY = null;
+
+        // Busca a API Key do servidor
+        async function carregarAPIKey() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                if (data.apiKey) {
+                    API_KEY = data.apiKey;
+                    console.log('🔑 API Key carregada do servidor');
+                } else {
+                    console.error('❌ API Key não configurada no servidor');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar API Key:', error);
+            }
+        }
+
+        // ============================================
+        // 4. SCROLL AUTOMÁTICO
+        // ============================================
+        function scrollParaBaixo() {
+            if (scrollTimeout) clearTimeout(scrollTimeout);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            scrollTimeout = setTimeout(() => { chatArea.scrollTop = chatArea.scrollHeight; }, 100);
+            setTimeout(() => { chatArea.scrollTop = chatArea.scrollHeight; }, 500);
+        }
+
+        const observer = new MutationObserver(() => { scrollParaBaixo(); });
+        if (chatContainer) {
+            observer.observe(chatContainer, { childList: true, subtree: true, characterData: true });
+        }
+
+
+        
+        // ============================================
+        // 5. BLOQUEIO / DESBLOQUEIO
+        // ============================================
+        function bloquearInput() {
+            estado.inputBloqueado = true;
+            estado.estaFalando = true;
+            microfoneAtivo = false;
+            inputUsuario.disabled = true;
+            inputUsuario.className = 'bloqueado';
+            inputUsuario.placeholder = '🔊 Aguarde...';
+            btnEnviar.disabled = true;
+            vozIndicador.className = 'voz-indicador falando';
+            vozIndicador.textContent = `🔊 ${VOZ_CONFIG.nome}...`;
+            vozStatusBar.className = 'voz-status-bar desligado';
+            vozStatusIcone.textContent = '🔇';
+            vozStatusTexto.textContent = '🔇 Microfone desligado (assistente falando)';
+            bloqueioOverlay.className = 'bloqueio-overlay ativo';
+            document.querySelectorAll('.botoes-rapidos button').forEach(b => b.disabled = true);
+
+            if (reconhecimento) {
+                try { reconhecimento.abort(); } catch (e) {}
+                reconhecimento = null;
+                estaOuvindo = false;
+            }
+        }
+
+        function desbloquearInput() {
+            estado.inputBloqueado = false;
+            estado.estaFalando = false;
+            microfoneAtivo = true;
+            inputUsuario.disabled = false;
+            inputUsuario.className = '';
+            inputUsuario.placeholder = '🎤 Ouvindo... Fale!';
+            btnEnviar.disabled = false;
+
+            if (wsConectado && setupCompleto) {
+                vozIndicador.className = 'voz-indicador ativo';
+                vozIndicador.textContent = `🎤 ${VOZ_CONFIG.nome}`;
+            } else {
+                vozIndicador.className = 'voz-indicador';
+                vozIndicador.textContent = '🔇 Voz';
+            }
+
+            vozStatusBar.className = 'voz-status-bar ativo';
+            vozStatusIcone.textContent = '🎤';
+            vozStatusTexto.textContent = '🎤 Ouvindo sempre... Fale!';
+            bloqueioOverlay.className = 'bloqueio-overlay';
+            document.querySelectorAll('.botoes-rapidos button').forEach(b => b.disabled = false);
+
+            if (!estaOuvindo) {
+                setTimeout(() => { iniciarEscutaContinua(); }, 500);
+            }
+        }
+
+        // ============================================
+        // 6. CHAT
+        // ============================================
+        function adicionarMensagem(remetente, texto) {
+            const div = document.createElement('div');
+            const classe = remetente === 'usuario' ? 'usuario' :
+                remetente === 'sistema' ? 'sistema' : 'gemini';
+            let html = texto.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            div.className = `mensagem-chat ${classe}`;
+            const avatar = remetente === 'usuario' ? '👤' :
+                remetente === 'sistema' ? '📢' : '🤖';
+            div.innerHTML = `
+                <div class="avatar">${avatar}</div>
+                <div class="bolha">
+                    ${html}
+                    <span class="hora">${new Date().toLocaleTimeString()}</span>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            scrollParaBaixo();
+            estado.historico.push({ remetente, texto, hora: new Date().toLocaleTimeString() });
+
+            if (remetente === 'gemini') {
+                falarComGeminiLive(texto);
+            }
+        }
+
+        function adicionarMensagemSistema(texto) {
+            const div = document.createElement('div');
+            div.className = 'mensagem-chat sistema';
+            div.innerHTML = `
+                <div class="avatar">📢</div>
+                <div class="bolha">${texto}<span class="hora">${new Date().toLocaleTimeString()}</span></div>
+            `;
+            chatContainer.appendChild(div);
+            scrollParaBaixo();
+        }
+
+        function adicionarLoading() {
+            const div = document.createElement('div');
+            div.className = 'mensagem-chat gemini';
+            div.id = 'loadingMessage';
+            div.innerHTML = `
+                <div class="avatar">⏳</div>
+                <div class="bolha" style="background:#1a2a4a; color:#888;">
+                    <span class="loading-dots">Pensando</span>
+                    <span class="hora">${new Date().toLocaleTimeString()}</span>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            scrollParaBaixo();
+        }
+
+        function removerLoading() {
+            const loading = document.getElementById('loadingMessage');
+            if (loading) loading.remove();
+            scrollParaBaixo();
+        }
+
+        function limparChat() {
+            chatContainer.innerHTML = '';
+            scrollParaBaixo();
+        }
+
+        // ============================================
+        // 7. GEMINI LIVE - WEBSOCKET
+        // ============================================
+        function conectarGeminiLive() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+
+            const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${API_KEY}`;
+            console.log('🔌 Conectando ao Gemini Live...');
+
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                wsConectado = true;
+                console.log('✅ WebSocket conectado! Enviando setup...');
+                vozIndicador.className = 'voz-indicador conectado';
+                vozIndicador.textContent = `🔊 ${VOZ_CONFIG.nome}`;
+
+                if (!audioContext) {
+                    audioContext = new(window.AudioContext || window.webkitAudioContext)();
+                }
+
+                const setupMessage = {
+                    setup: {
+                        model: `models/${MODELO_LIVE}`,
+                        generation_config: {
+                            response_modalities: ['AUDIO'],
+                            speech_config: {
+                                voice_config: {
+                                    prebuilt_voice_config: { voiceName: VOZ_CONFIG.nome }
+                                }
+                            }
+                        },
+                        system_instruction: {
+                            parts: [{
+                                text: 'Você é o Zé, assistente da Pizzaria do Zé. Responda em português, seja simpático e direto. Mantenha respostas curtas (máximo 4 frases). Use emojis.'
+                            }]
+                        }
+                    }
+                };
+
+                ws.send(JSON.stringify(setupMessage));
+                console.log('📤 Setup enviado com voz:', VOZ_CONFIG.nome);
+            };
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof ArrayBuffer) {
+                    processarBinario(new Uint8Array(event.data));
+                } else if (event.data instanceof Blob) {
+                    const reader = new FileReader();
+                    reader.onload = () => processarBinario(new Uint8Array(reader.result));
+                    reader.readAsArrayBuffer(event.data);
+                } else if (typeof event.data === 'string') {
+                    try { processarJSON(JSON.parse(event.data)); }
+                    catch (e) { console.error('❌ JSON:', e.message); }
+                }
+            };
+
+            ws.onerror = (err) => {
+                console.error('❌ Erro no WebSocket:', err);
+                wsConectado = false;
+                vozIndicador.className = 'voz-indicador desligado';
+                vozIndicador.textContent = '❌ Erro';
+            };
+
+            ws.onclose = () => {
+                wsConectado = false;
+                setupCompleto = false;
+                console.log('🔌 WebSocket desconectado');
+                vozIndicador.className = 'voz-indicador';
+                vozIndicador.textContent = '🔇 Voz';
+
+                setTimeout(() => {
+                    if (!wsConectado) {
+                        console.log('🔄 Reconectando...');
+                        conectarGeminiLive();
+                    }
+                }, 3000);
+            };
+        }
+
+        // ============================================
+        // 8. PROCESSAR BINÁRIO (ÁUDIO PCM)
+        // ============================================
+        function processarBinario(uint8Array) {
+            if (uint8Array.length > 0 && uint8Array[0] === 0x7B) {
+                try {
+                    const text = new TextDecoder().decode(uint8Array);
+                    processarJSON(JSON.parse(text));
+                    return;
+                } catch (e) {}
+            }
+            filaAudio.push(uint8Array);
+            if (!reproduzindo) reproduzirProximo();
+        }
+
+        // ============================================
+        // 9. PROCESSAR JSON
+        // ============================================
+        function processarJSON(data) {
+            if (data.setupComplete) {
+                setupCompleto = true;
+                console.log('✅ Setup completo! Pronto para gerar áudio com', VOZ_CONFIG.nome);
+                vozIndicador.className = 'voz-indicador conectado';
+                vozIndicador.textContent = `🔊 ${VOZ_CONFIG.nome} pronta`;
+
+                if (textoPendente) {
+                    const txt = textoPendente;
+                    textoPendente = null;
+                    console.log('📤 Enviando texto pendente agora');
+                    ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                }
+                return;
+            }
+
+            if (data.serverContent?.modelTurn?.parts) {
+                for (const part of data.serverContent.modelTurn.parts) {
+                    if (part.inlineData?.data) {
+                        const binaryString = atob(part.inlineData.data);
+                        const uint8Array = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) {
+                            uint8Array[i] = binaryString.charCodeAt(i);
+                        }
+                        filaAudio.push(uint8Array);
+                        if (!reproduzindo) reproduzirProximo();
+                    }
+                    if (part.text) console.log(`📝 Gemini: ${part.text.substring(0, 80)}`);
+                }
+            }
+
+            if (data.error) {
+                console.error(`❌ Erro Gemini: ${data.error.message}`);
+            }
+        }
+
+        // ============================================
+        // 10. REPRODUÇÃO SEQUENCIAL
+        // ============================================
+        function reproduzirProximo() {
+            if (filaAudio.length === 0) {
+                reproduzindo = false;
+                fonteAtual = null;
+                if (estado.estaFalando) {
+                    setTimeout(() => {
+                        if (filaAudio.length === 0 && !reproduzindo) {
+                            desbloquearInput();
+                        }
+                    }, 300);
+                }
+                return;
+            }
+
+            reproduzindo = true;
+            const uint8Array = filaAudio.shift();
+
+            try {
+                if (!audioContext || audioContext.state === 'closed') {
+                    audioContext = new(window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') audioContext.resume();
+
+                const floatData = new Float32Array(uint8Array.length / 2);
+                for (let i = 0; i < floatData.length; i++) {
+                    const sample = uint8Array[i * 2] | (uint8Array[i * 2 + 1] << 8);
+                    const sinal = sample > 32767 ? sample - 65536 : sample;
+                    floatData[i] = sinal / 32768.0;
+                }
+
+                const buffer = audioContext.createBuffer(1, floatData.length, SAMPLE_RATE);
+                buffer.getChannelData(0).set(floatData);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                fonteAtual = source;
+
+                source.onended = () => {
+                    fonteAtual = null;
+                    reproduzirProximo();
+                };
+
+                source.start(0);
+                vozIndicador.className = 'voz-indicador falando';
+                vozIndicador.textContent = `🔊 ${VOZ_CONFIG.nome} falando...`;
+
+            } catch (error) {
+                console.error(`❌ Erro ao reproduzir: ${error.message}`);
+                reproduzirProximo();
+            }
+        }
+
+        // ============================================
+        // 11. FALAR COM GEMINI LIVE
+        // ============================================
+        function falarComGeminiLive(texto) {
+            bloquearInput();
+
+            if (!wsConectado) {
+                console.log('⚠️ WebSocket não conectado. Tentando reconectar...');
+                conectarGeminiLive();
+                textoPendente = texto;
+
+                let tentativas = 0;
+                const intervalo = setInterval(() => {
+                    tentativas++;
+                    if (setupCompleto && textoPendente) {
+                        clearInterval(intervalo);
+                        const txt = textoPendente;
+                        textoPendente = null;
+                        console.log('📤 Enviando texto após reconexão');
+                        ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                    } else if (tentativas > 20) {
+                        clearInterval(intervalo);
+                        console.error('❌ Timeout aguardando conexão');
+                        textoPendente = null;
+                        desbloquearInput();
+                    }
+                }, 500);
+                return;
+            }
+
+            if (!setupCompleto) {
+                console.log('⚠️ Setup não completo. Guardando texto pendente...');
+                textoPendente = texto;
+
+                let tentativas = 0;
+                const intervalo = setInterval(() => {
+                    tentativas++;
+                    if (setupCompleto && textoPendente) {
+                        clearInterval(intervalo);
+                        const txt = textoPendente;
+                        textoPendente = null;
+                        console.log('📤 Enviando texto pendente');
+                        ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                    } else if (tentativas > 20) {
+                        clearInterval(intervalo);
+                        console.error('❌ Timeout aguardando setup');
+                        textoPendente = null;
+                        desbloquearInput();
+                    }
+                }, 500);
+                return;
+            }
+
+            console.log('🔊 Enviando para Gemini Live:', texto.substring(0, 100));
+
+            filaAudio = [];
+            reproduzindo = false;
+            if (fonteAtual) {
+                try { fonteAtual.stop(); } catch (e) {}
+                fonteAtual = null;
+            }
+
+            ws.send(JSON.stringify({ realtime_input: { text: texto } }));
+
+            setTimeout(() => {
+                if (estado.estaFalando && filaAudio.length === 0 && !reproduzindo) {
+                    console.log('⚠️ Timeout aguardando áudio');
+                    desbloquearInput();
+                }
+            }, 15000);
+        }
+
+        // ============================================
+        // 12. EXTRAIR NÚMERO
+        // ============================================
+        function extrairNumero(texto) {
+            const lower = texto.toLowerCase().trim();
+            for (const [palavra, numero] of Object.entries(NUMEROS_EXTENSO)) {
+                if (lower.includes(palavra)) return numero;
+            }
+            const numeros = texto.match(/\d+/g);
+            if (numeros) {
+                for (const numStr of numeros) {
+                    const num = parseInt(numStr);
+                    if (num > 0 && num <= CARDAPIO.length) return num;
+                }
+            }
+            const padroes = [/opção\s*(\d+)/i, /item\s*(\d+)/i, /pizza\s*(\d+)/i, /quero\s*(\d+)/i];
+            for (const padrao of padroes) {
+                const match = texto.match(padrao);
+                if (match) {
+                    const num = parseInt(match[1]);
+                    if (num > 0 && num <= CARDAPIO.length) return num;
+                }
+            }
+            return null;
+        }
+
+        // ============================================
+        // 13. CHAMAR GEMINI (TEXTO via HTTP)
+        // ============================================
+        async function chamarGemini(mensagem) {
+            if (estado.processando) return;
+            if (estado.estaFalando) return;
+            estado.processando = true;
+            adicionarLoading();
+            try {
+                const contexto = `
+                Você é o Zé, assistente da Pizzaria do Zé.
+                REGRAS:
+                1. Responda em português, seja simpático e direto.
+                2. Use emojis. Mantenha respostas curtas (máximo 4 frases).
+                3. INTERPRETE QUALQUER COISA que o cliente disser.
+                4. SEMPRE confirme o que o cliente escolheu.
+                CARDÁPIO:
+                ${CARDAPIO.map(p => `${p.id}. ${p.emoji} ${p.nome} - R$ ${p.preco.toFixed(2)}`).join('\n')}
+                STATUS ATUAL:
+                - Etapa: ${estado.etapa}
+                - Carrinho: ${estado.carrinho.length} itens
+                - Total: R$ ${estado.carrinho.reduce((s,i) => s + (i.preco * i.quantidade), 0).toFixed(2)}
+                ${estado.carrinho.length > 0 ? `- Itens: ${estado.carrinho.map(i => `${i.quantidade}x ${i.nome}`).join(', ')}` : '- Carrinho vazio'}
+                MENSAGEM: ${mensagem}
+                RESPONDA DE FORMA ÚTIL E GUIE O CLIENTE.
+                `;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_TEXTO}:generateContent?key=${API_KEY}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: contexto }] }],
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 400 }
+                    })
+                });
+                removerLoading();
+                if (!response.ok) throw new Error('Erro na API');
+                const data = await response.json();
+                const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!texto) throw new Error('Resposta vazia');
+                adicionarMensagem('gemini', texto);
+            } catch (error) {
+                removerLoading();
+                console.error('❌ Erro:', error);
+                adicionarMensagem('gemini', '❌ Desculpe, tive um problema. Pode repetir?');
+            }
+            estado.processando = false;
+            atualizarBotoesRapidos();
+        }
+
+        // ============================================
+        // 14. PROCESSAR ENTRADA
+        // ============================================
+        async function processarEntrada(texto) {
+            if (!microfoneAtivo) return;
+            if (!texto || texto.trim() === '') return;
+            if (estado.processando) return;
+            if (estado.estaFalando) return;
+            const textoLimpo = texto.trim();
+            if (textoLimpo === estado.ultimaFala) return;
+            estado.ultimaFala = textoLimpo;
+            console.log('🗣️ Processando:', textoLimpo);
+            adicionarMensagem('usuario', textoLimpo);
+            const numero = extrairNumero(textoLimpo);
+            if (numero && (estado.etapa === 'boas-vindas' || estado.etapa === 'cardapio' || estado.etapa === 'carrinho')) {
+                adicionarAoCarrinho(numero);
+                atualizarBotoesRapidos();
+                return;
+            }
+            if (processarComando(textoLimpo)) {
+                atualizarBotoesRapidos();
+                return;
+            }
+            await chamarGemini(textoLimpo);
+            atualizarBotoesRapidos();
+        }
+
+        // ============================================
+        // 15. COMANDOS
+        // ============================================
+        function processarComando(texto) {
+            const lower = texto.toLowerCase().trim();
+            if (lower === 'cardápio' || lower === 'cardapio' || lower === 'menu') { mostrarCardapio(); return true; }
+            if (lower === 'carrinho' || lower === 'ver carrinho') { mostrarCarrinho(); return true; }
+            if (lower === 'pagar' || lower === 'finalizar') {
+                if (estado.carrinho.length === 0) { adicionarMensagem('gemini', '❌ Carrinho vazio!'); return true; }
+                iniciarPagamento(); return true;
+            }
+            if (lower === 'limpar carrinho') { estado.carrinho = []; adicionarMensagem('gemini', '🗑️ Carrinho esvaziado!'); return true; }
+            if (lower === 'novo pedido' || lower === 'recomeçar') { reiniciarPedido(); return true; }
+            if (estado.etapa === 'pagamento') return processarPagamento(texto);
+            if (estado.etapa === 'pix') return processarPix(texto);
+            if (estado.etapa === 'pix_confirmacao') {
+                if (lower === 'pago' || lower === 'confirmo' || lower === 'sim') { confirmarPixPago(); return true; }
+                return false;
+            }
+            if (estado.etapa === 'endereco') return processarEndereco(texto);
+            if (estado.etapa === 'endereco_numero') return processarNumeroEndereco(texto);
+            if (estado.etapa === 'endereco_confirmacao') {
+                if (lower === 'sim' || lower === 'confirmo') { confirmarEndereco(); return true; }
+                if (lower === 'corrigir') { corrigirEndereco(); return true; }
+                return false;
+            }
+            if (estado.etapa === 'status') {
+                if (lower === 'entregue' || lower === 'confirmar') { finalizarEntrega(); return true; }
+            }
+            return false;
+        }
+
+        // ============================================
+        // 16. FUNÇÕES DO SISTEMA
+        // ============================================
+        function mostrarCardapio() {
+            const texto = CARDAPIO.map(p =>
+                `**${p.id}.** ${p.emoji} ${p.nome} - R$ ${p.preco.toFixed(2)}\n   ${p.descricao}`
+            ).join('\n\n');
+            adicionarMensagem('gemini', `📋 **Cardápio**\n\n${texto}\n\n💡 Diga: **"1"**, **"item 2"**, **"opção 3"**, **"quatro"**`);
+            estado.etapa = 'cardapio';
+            atualizarBotoesRapidos();
+        }
+
+        function adicionarAoCarrinho(id) {
+            const pizza = CARDAPIO.find(p => p.id === id);
+            if (!pizza) return;
+            const existente = estado.carrinho.find(i => i.id === id);
+            if (existente) { existente.quantidade += 1; }
+            else { estado.carrinho.push({ ...pizza, quantidade: 1 }); }
+            const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+            const qtd = estado.carrinho.reduce((s, i) => s + i.quantidade, 0);
+            adicionarMensagem('gemini', `✅ **${pizza.emoji} ${pizza.nome}** adicionada!\n📦 ${qtd} itens | 💰 R$ ${total.toFixed(2)}`);
+            estado.etapa = 'cardapio';
+            atualizarBotoesRapidos();
+        }
+
+        function mostrarCarrinho() {
+            if (estado.carrinho.length === 0) { adicionarMensagem('gemini', '🛒 Carrinho vazio!'); return; }
+            const itens = estado.carrinho.map(i =>
+                `- ${i.emoji} ${i.nome} (${i.quantidade}x) = R$ ${(i.preco * i.quantidade).toFixed(2)}`
+            ).join('\n');
+            const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+            adicionarMensagem('gemini', `🛒 **Carrinho**\n\n${itens}\n\n💰 **Total: R$ ${total.toFixed(2)}**\n\n💡 Diga **"pagar"**`);
+            estado.etapa = 'carrinho';
+            atualizarBotoesRapidos();
+        }
+
+        function iniciarPagamento() {
+            const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+            adicionarMensagem('gemini', `💳 **Pagamento**\n\n💰 Total: R$ ${total.toFixed(2)}\n\n💵 **1 - Dinheiro**\n💳 **2 - Cartão**\n📱 **3 - Pix**\n\nDiga **"1"**, **"2"** ou **"3"**`);
+            estado.etapa = 'pagamento';
+            estado.pagamentoConfirmado = false;
+            atualizarBotoesRapidos();
+        }
+
+        function processarPagamento(texto) {
+            const lower = texto.toLowerCase().trim();
+            const num = extrairNumero(texto);
+            if (lower.includes('dinheiro') || num === 1) {
+                estado.formaPagamento = 'dinheiro'; estado.pagamentoConfirmado = true;
+                adicionarMensagem('gemini', '💵 Dinheiro confirmado!\n\nAgora, informe o **endereço**.');
+                estado.etapa = 'endereco'; atualizarBotoesRapidos(); return true;
+            }
+            if (lower.includes('cartao') || lower.includes('cartão') || num === 2) {
+                estado.formaPagamento = 'cartao'; estado.pagamentoConfirmado = true;
+                adicionarMensagem('gemini', '💳 Cartão confirmado!\n\nAgora, informe o **endereço**.');
+                estado.etapa = 'endereco'; atualizarBotoesRapidos(); return true;
+            }
+            if (lower.includes('pix') || num === 3) {
+                estado.formaPagamento = 'pix';
+                adicionarMensagem('gemini', '📱 **Pix**\n\n1️⃣ **Pagar agora**\n2️⃣ **Pagar na entrega**\n\nDiga **"1"** ou **"2"**');
+                estado.etapa = 'pix'; atualizarBotoesRapidos(); return true;
+            }
+            return false;
+        }
+
+        function processarPix(texto) {
+            const lower = texto.toLowerCase().trim();
+            const num = extrairNumero(texto);
+            if (lower.includes('agora') || num === 1) {
+                const chave = 'pix.pizzaria.ze@banco.com';
+                const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+                adicionarMensagem('gemini', `💰 **Pix Antecipado**\n\nChave: \`${chave}\`\nValor: R$ ${total.toFixed(2)}\n\nDiga **"pago"**`);
+                estado.etapa = 'pix_confirmacao'; atualizarBotoesRapidos(); return true;
+            }
+            if (lower.includes('entrega') || num === 2) {
+                estado.pagamentoConfirmado = true; estado.formaPagamento = 'pix_entrega';
+                adicionarMensagem('gemini', '📦 Pix na entrega confirmado!\n\nAgora, informe o **endereço**.');
+                estado.etapa = 'endereco'; atualizarBotoesRapidos(); return true;
+            }
+            return false;
+        }
+
+        function confirmarPixPago() {
+            estado.pagamentoConfirmado = true;
+            adicionarMensagem('gemini', '✅ Pagamento confirmado!\n\nAgora, informe o **endereço**.');
+            estado.etapa = 'endereco'; atualizarBotoesRapidos();
+        }
+
+        function processarEndereco(texto) {
+            const cepMatch = texto.match(/\d{5}-?\d{3}/);
+            if (cepMatch) { buscarCep(cepMatch[0].replace(/\D/g, '')); return true; }
+            const numeroMatch = texto.match(/\d+/);
+            if (numeroMatch && texto.length > 10) {
+                estado.endereco.logradouro = texto;
+                estado.endereco.numero = numeroMatch[0] || 'S/N';
+                adicionarMensagem('gemini', `📍 **Endereço:** ${texto}\n\nConfirme com **"sim"**`);
+                estado.etapa = 'endereco_confirmacao'; atualizarBotoesRapidos(); return true;
+            }
+            adicionarMensagem('gemini', '❌ Digite o **CEP** ou endereço completo.');
+            return false;
+        }
+
+        function processarNumeroEndereco(texto) {
+            const match = texto.match(/(\d+)/);
+            const numero = match ? match[0] : 'S/N';
+            estado.endereco.numero = numero;
+            adicionarMensagem('gemini', `✅ **Endereço:** ${estado.endereco.logradouro}, ${numero}\n\nConfirme com **"sim"**`);
+            estado.etapa = 'endereco_confirmacao'; atualizarBotoesRapidos(); return true;
+        }
+
+        function buscarCep(cep) {
+            adicionarMensagemSistema('🔍 Buscando endereço...');
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.erro) { adicionarMensagem('gemini', '❌ CEP não encontrado.'); return; }
+                    estado.endereco.cep = cep;
+                    estado.endereco.logradouro = data.logradouro || '';
+                    estado.endereco.bairro = data.bairro || '';
+                    estado.endereco.cidade = `${data.localidade} - ${data.uf}`;
+                    adicionarMensagem('gemini', `📍 **Endereço:** ${data.logradouro}\n${data.bairro}\n${data.localidade} - ${data.uf}\n\nDigite o **número**`);
+                    estado.etapa = 'endereco_numero'; atualizarBotoesRapidos();
+                })
+                .catch(() => { adicionarMensagem('gemini', '❌ Erro ao buscar CEP.'); });
+        }
+
+        function confirmarEndereco() {
+            if (!estado.endereco.logradouro && !estado.endereco.cep) {
+                adicionarMensagem('gemini', '❌ Endereço incompleto.'); return;
+            }
+            finalizarPedido();
+        }
+
+        function corrigirEndereco() {
+            adicionarMensagem('gemini', '✏️ Digite o endereço novamente.');
+            estado.etapa = 'endereco'; atualizarBotoesRapidos();
+        }
+
+        // ============================================
+        // 17. 🔥 SALVAR PEDIDO NO SERVIDOR
+        // ============================================
+        async function salvarPedidoNoServidor() {
+            try {
+                const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+                const itensTexto = estado.carrinho.map(i =>
+                    `${i.quantidade}x ${i.nome} (R$ ${(i.preco * i.quantidade).toFixed(2)})`
+                ).join(' | ');
+
+                const enderecoCompleto =
+                    `${estado.endereco.logradouro}, ${estado.endereco.numero} - ${estado.endereco.bairro}, ${estado.endereco.cidade}`;
+
+                // 🔥 PEGA O TELEFONE DA URL (?tel=...)
+                const params = new URLSearchParams(window.location.search);
+                const telefone = params.get('tel');
+                let clienteId = estado.clienteId || 1;
+
+                // Se veio telefone e ainda não temos o cliente, registra/busca
+                if (telefone && !estado.clienteId) {
+                    try {
+                        const respCliente = await fetch(`/api/link/${telefone}`);
+                        const dataCliente = await respCliente.json();
+                        if (dataCliente.cliente && dataCliente.cliente.id) {
+                            clienteId = dataCliente.cliente.id;
+                            estado.clienteId = clienteId;
+                            estado.telefone = telefone;
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Não conseguiu registrar cliente, usando padrão');
+                    }
+                }
+
+                console.log('📤 Enviando pedido para o servidor...');
+                console.log('   Cliente ID:', clienteId);
+                console.log('   Itens:', itensTexto);
+                console.log('   Total:', total);
+
+                const response = await fetch('/api/pedidos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cliente_id: clienteId,
+                        itens: itensTexto,
+                        total: total,
+                        forma_pagamento: estado.formaPagamento,
+                        endereco_entrega: enderecoCompleto,
+                        observacao: estado.endereco.complemento || ''
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    console.log('✅ Pedido salvo no servidor!', data.pedido);
+                    estado.numeroPedido = data.pedido.numero_pedido;
+                    pedidoNumeroSpan.textContent = data.pedido.numero_pedido;
+
+                    // 🔥 SALVA ENDEREÇO NO CADASTRO DO CLIENTE
+                    if (telefone && clienteId && clienteId !== 1) {
+                        try {
+                            await fetch(`/api/clientes/${clienteId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    endereco: estado.endereco.logradouro,
+                                    numero: estado.endereco.numero,
+                                    bairro: estado.endereco.bairro,
+                                    cidade: estado.endereco.cidade,
+                                    complemento: estado.endereco.complemento,
+                                    cep: estado.endereco.cep
+                                })
+                            });
+                            console.log('✅ Endereço salvo no cadastro do cliente');
+                        } catch (e) {
+                            console.warn('⚠️ Não conseguiu salvar endereço');
+                        }
+                    }
+
+                    return data.pedido;
+                } else {
+                    console.error('❌ Erro ao salvar:', data.erro);
+                    return null;
+                }
+
+            } catch (error) {
+                console.error('❌ Erro ao salvar pedido:', error);
+                return null;
+            }
+        }
+
+        // ============================================
+        // 18. FINALIZAR PEDIDO (agora com salvamento no servidor)
+        // ============================================
+        async function finalizarPedido() {
+            if (estado.carrinho.length === 0 || !estado.pagamentoConfirmado) {
+                adicionarMensagem('gemini', '❌ Verifique carrinho e pagamento.');
+                return;
+            }
+
+            // 🔥 SALVA NO SERVIDOR PRIMEIRO
+            console.log('💾 Salvando pedido no servidor...');
+            const pedidoSalvo = await salvarPedidoNoServidor();
+
+            if (!pedidoSalvo) {
+                adicionarMensagem('gemini', '❌ Erro ao salvar pedido. Por favor, tente novamente.');
+                return;
+            }
+
+            const total = estado.carrinho.reduce((s, i) => s + (i.preco * i.quantidade), 0);
+
+            adicionarMensagem('gemini',
+                `🎉 **Pedido #${estado.numeroPedido} confirmado!**\n\n` +
+                `💰 R$ ${total.toFixed(2)}\n` +
+                `💳 ${estado.formaPagamento.toUpperCase()}\n` +
+                `📍 ${estado.endereco.logradouro}, ${estado.endereco.numero}\n\n` +
+                `📩 **Status: Pedido Recebido**\n` +
+                `👨‍🍳 O atendente vai atualizar o status.`
+            );
+
+            estado.etapa = 'status';
+            estado.statusAtual = 0;
+            atualizarStatusUI();
+            atualizarBotoesRapidos();
+        }
+
+        function atualizarStatusUI() {
+            let mensagem = `📦 **Status do Pedido #${estado.numeroPedido}**\n\n📩 **Pedido Recebido** ✅\n\n👨‍🍳 Aguardando confirmação de entrega...\n\n💡 O atendente vai confirmar quando for **entregue**.`;
+            adicionarMensagem('gemini', mensagem);
+        }
+
+        function finalizarEntrega() {
+            estado.statusAtual = 1;
+            adicionarMensagemSistema(`👨‍🍳 Atendente: ✅ Pedido #${estado.numeroPedido} entregue!`);
+            adicionarMensagem('gemini', `✅ **Pedido #${estado.numeroPedido} Entregue!** 🎉\n\n🎉 Obrigado por pedir na Pizzaria do Zé!\n\n💡 Diga **"novo pedido"** para recomeçar.`);
+            estado.etapa = 'finalizado'; atualizarBotoesRapidos();
+        }
+
+        function reiniciarPedido() {
+            filaAudio = [];
+            reproduzindo = false;
+            if (fonteAtual) { try { fonteAtual.stop(); } catch (e) {} fonteAtual = null; }
+            textoPendente = null;
+
+            estado.carrinho = [];
+            estado.formaPagamento = null;
+            estado.pagamentoConfirmado = false;
+            estado.endereco = { cep: '', logradouro: '', numero: '', bairro: '', cidade: '', complemento: '' };
+            estado.numeroPedido = 0;
+            estado.statusAtual = 0;
+            estado.etapa = 'boas-vindas';
+            estado.processando = false;
+            estado.estaFalando = false;
+            estado.inputBloqueado = false;
+            estado.ultimaFala = '';
+            estado.microfoneAtivo = true;
+            pedidoNumeroSpan.textContent = '---';
+            limparChat();
+
+            adicionarMensagem('gemini',
+                '🍕 **Bem-vindo à Pizzaria do Zé!**\n\n' +
+                'Eu sou o Zé, seu assistente. 🎤\n\n' +
+                `📋 Diga **"cardápio"** para ver as pizzas.\n` +
+                `💡 Diga: **"1"**, **"item 2"**, **"opção 3"**, **"quatro"**\n\n` +
+                `🎤 Estou ouvindo sempre... é só falar!`
+            );
+            estado.etapa = 'boas-vindas';
+            atualizarBotoesRapidos();
+
+            setTimeout(() => {
+                if (!estaOuvindo) iniciarEscutaContinua();
+            }, 1000);
+        }
+
+        // ============================================
+        // 19. MICROFONE
+        // ============================================
+        function iniciarEscutaContinua() {
+            if (!microfoneAtivo) return;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('❌ SpeechRecognition não suportado');
+                return;
+            }
+            if (estaOuvindo) return;
+            try {
+                reconhecimento = new SpeechRecognition();
+                reconhecimento.lang = 'pt-BR';
+                reconhecimento.continuous = true;
+                reconhecimento.interimResults = true;
+                reconhecimento.maxAlternatives = 1;
+                reconhecimento.onstart = () => {
+                    estaOuvindo = true;
+                    vozIndicador.className = 'voz-indicador ativo';
+                    vozIndicador.textContent = '🎤 Ouvindo...';
+                    vozStatusBar.className = 'voz-status-bar ativo';
+                    vozStatusIcone.textContent = '🎤';
+                    vozStatusTexto.textContent = '🎤 Ouvindo sempre... Fale!';
+                    inputUsuario.placeholder = '🎤 Ouvindo... Fale!';
+                };
+                reconhecimento.onresult = (event) => {
+                    if (!microfoneAtivo || estado.estaFalando || estado.inputBloqueado) return;
+                    let textoFinal = ''; let textoInterim = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const resultado = event.results[i];
+                        const texto = resultado[0].transcript;
+                        if (resultado.isFinal) textoFinal += texto;
+                        else textoInterim += texto;
+                    }
+                    if (textoInterim) {
+                        inputUsuario.value = textoInterim;
+                        vozStatusTexto.textContent = `🎤 Ouvindo: "${textoInterim}"`;
+                    }
+                    if (textoFinal) {
+                        inputUsuario.value = textoFinal;
+                        vozStatusTexto.textContent = `✅ Reconhecido: "${textoFinal}"`;
+                        if (silencioTimeout) clearTimeout(silencioTimeout);
+                        const delay = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 400 : 800;
+                        silencioTimeout = setTimeout(() => {
+                            if (!estado.processandoVoz && !estado.estaFalando && microfoneAtivo) {
+                                estado.processandoVoz = true;
+                                const textoParaProcessar = textoFinal.trim();
+                                setTimeout(() => {
+                                    inputUsuario.value = '';
+                                    vozStatusTexto.textContent = '🎤 Ouvindo sempre... Fale!';
+                                    estado.processandoVoz = false;
+                                }, 500);
+                                processarEntrada(textoParaProcessar);
+                            }
+                        }, delay);
+                    }
+                };
+                reconhecimento.onerror = (event) => {
+                    if (event.error === 'not-allowed') {
+                        adicionarMensagem('gemini', '❌ Permita o microfone! 🔒');
+                        pararEscuta();
+                    } else if (event.error === 'no-speech') {
+                        vozStatusTexto.textContent = '🎤 Aguardando fala...';
+                    } else if (event.error === 'audio-capture') {
+                        setTimeout(() => { pararEscuta(); setTimeout(iniciarEscutaContinua, 1000); }, 2000);
+                    }
+                };
+                reconhecimento.onend = () => {
+                    if (estaOuvindo && microfoneAtivo) {
+                        const intervalo = /iPad|iPhone|iPod/.test(navigator.userAgent) ? 800 : 300;
+                        setTimeout(iniciarEscutaContinua, intervalo);
+                    }
+                };
+                reconhecimento.start();
+            } catch (error) {
+                if (microfoneAtivo) setTimeout(iniciarEscutaContinua, 2000);
+            }
+        }
+
+        function pararEscuta() {
+            estaOuvindo = false;
+            if (reconhecimento) { try { reconhecimento.abort(); } catch (e) {} reconhecimento = null; }
+            if (silencioTimeout) clearTimeout(silencioTimeout);
+            vozIndicador.className = 'voz-indicador conectado';
+            vozIndicador.textContent = '🎤 Voz';
+            vozStatusBar.className = 'voz-status-bar';
+            vozStatusIcone.textContent = '🎤';
+            vozStatusTexto.textContent = 'Voz: Disponível';
+            inputUsuario.placeholder = 'Digite seu pedido...';
+        }
+
+        // ============================================
+        // 20. BOTÕES RÁPIDOS
+        // ============================================
+        function atualizarBotoesRapidos() {
+            botoesRapidos.innerHTML = '';
+            const botoes = [];
+            const podeClicar = !estado.estaFalando && !estado.inputBloqueado;
+            switch (estado.etapa) {
+                case 'boas-vindas':
+                    botoes.push({ texto: '📋 Cardápio', classe: 'primario', acao: () => processarEntrada('cardápio') });
+                    break;
+                case 'cardapio':
+                    botoes.push({ texto: '📋 Cardápio', classe: 'primario', acao: () => processarEntrada('cardápio') });
+                    botoes.push({ texto: '🛒 Carrinho', acao: () => processarEntrada('carrinho') });
+                    CARDAPIO.slice(0, 4).forEach(p => {
+                        botoes.push({ texto: `${p.id} ${p.emoji}`, acao: () => processarEntrada(p.id.toString()) });
+                    });
+                    if (estado.carrinho.length > 0) {
+                        botoes.push({ texto: '✅ Pagar', classe: 'primario', acao: () => processarEntrada('pagar') });
+                    }
+                    break;
+                case 'carrinho':
+                    botoes.push({ texto: '📋 Cardápio', acao: () => processarEntrada('cardápio') });
+                    botoes.push({ texto: '✅ Pagar', classe: 'primario', acao: () => processarEntrada('pagar') });
+                    break;
+                case 'pagamento':
+                    botoes.push({ texto: '💵 1', acao: () => processarEntrada('1') });
+                    botoes.push({ texto: '💳 2', acao: () => processarEntrada('2') });
+                    botoes.push({ texto: '📱 3', acao: () => processarEntrada('3') });
+                    break;
+                case 'pix':
+                    botoes.push({ texto: '💰 1 - Agora', acao: () => processarEntrada('1') });
+                    botoes.push({ texto: '📦 2 - Entrega', acao: () => processarEntrada('2') });
+                    break;
+                case 'pix_confirmacao':
+                    botoes.push({ texto: '✅ Pago', classe: 'primario', acao: () => processarEntrada('pago') });
+                    break;
+                case 'endereco':
+                    botoes.push({ texto: '📍 Buscar CEP', classe: 'primario', acao: () => {
+                        const cep = prompt('Digite o CEP:');
+                        if (cep) processarEntrada(cep);
+                    } });
+                    break;
+                case 'endereco_confirmacao':
+                    botoes.push({ texto: '✅ Sim', classe: 'primario', acao: () => processarEntrada('sim') });
+                    botoes.push({ texto: '✏️ Corrigir', acao: () => processarEntrada('corrigir') });
+                    break;
+                case 'status':
+                    botoes.push({ texto: '✅ Confirmar Entrega', classe: 'atendente', acao: () => finalizarEntrega() });
+                    break;
+                case 'finalizado':
+                    botoes.push({ texto: '🔄 Novo Pedido', classe: 'primario', acao: () => processarEntrada('novo pedido') });
+                    break;
+                default:
+                    botoes.push({ texto: '📋 Cardápio', classe: 'primario', acao: () => processarEntrada('cardápio') });
+            }
+            botoes.forEach(b => {
+                const btn = document.createElement('button');
+                btn.textContent = b.texto;
+                if (b.classe) btn.className = b.classe;
+                if (!podeClicar) btn.disabled = true;
+                btn.addEventListener('click', b.acao);
+                botoesRapidos.appendChild(btn);
+            });
+        }
+
+        // ============================================
+        // 21. EVENTOS
+        // ============================================
+        btnEnviar.addEventListener('click', () => {
+            if (estado.estaFalando || estado.inputBloqueado) return;
+            const texto = inputUsuario.value.trim();
+            if (texto) {
+                inputUsuario.value = '';
+                processarEntrada(texto);
+            }
+        });
+
+        inputUsuario.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); btnEnviar.click(); }
+        });
+
+        // ============================================
+        // 22. ATIVAÇÃO NO iPHONE (TOQUE)
+        // ============================================
+        btnAtivar.addEventListener('click', async () => {
+            try {
+                console.log('🎤 Solicitando microfone...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                });
+                stream.getTracks().forEach(t => t.stop());
+                console.log('✅ Microfone autorizado!');
+
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                console.log('✅ AudioContext desbloqueado:', audioContext.state);
+
+                try {
+                    const buffer = audioContext.createBuffer(1, 1, 22050);
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                } catch (e) {}
+
+                ativarOverlay.className = 'ativar-overlay';
+
+                // Inicia tudo agora
+                conectarGeminiLive();
+                reiniciarPedido();
+
+                setTimeout(() => {
+                    if (microfoneAtivo) iniciarEscutaContinua();
+                }, 1500);
+
+            } catch (err) {
+                console.error('❌ Erro:', err);
+                alert('❌ Não foi possível acessar o microfone.\n\n' +
+                      'Verifique:\n' +
+                      '1. HTTPS ativo\n' +
+                      '2. Permissão do microfone\n' +
+                      '3. Nenhum outro app usando o microfone');
+            }
+        });
+
+        // ============================================
+        // 23. INICIALIZAÇÃO
+        // ============================================
+        function iniciar() {
+            console.log('🍕 Pizzaria do Zé - Gemini Live');
+            console.log(`📱 Dispositivo: ${/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'iOS' : 'Desktop'}`);
+            console.log(`🔒 Protocolo: ${location.protocol}`);
+
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isSecure = location.protocol === 'https:' ||
+                             location.hostname === 'localhost' ||
+                             location.hostname === '127.0.0.1';
+
+            if (!isSecure) {
+                console.warn('⚠️ Contexto NÃO seguro. Microfone não vai funcionar no iOS.');
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('❌ getUserMedia não disponível');
+                alert('⚠️ Seu navegador não suporta microfone.');
+                return;
+            }
+
+            // 🔥 NO iPHONE, MOSTRA O OVERLAY DE ATIVAÇÃO
+            // NO DESKTOP, INICIA DIRETO
+            if (isIOS) {
+                ativarOverlay.className = 'ativar-overlay ativo';
+            } else {
+                // Desktop: inicia direto
+                conectarGeminiLive();
+                reiniciarPedido();
+                setTimeout(() => {
+                    if (microfoneAtivo) iniciarEscutaContinua();
+                }, 2000);
+            }
+
+            console.log(`🎤 Modelo: ${MODELO_LIVE}`);
+            console.log(`🔊 Voz: ${VOZ_CONFIG.nome}`);
+        }
+
+        carregarAPIKey().then(() => {
+            iniciar();
+        });
+    </script>
+
+</body>
+</html>
