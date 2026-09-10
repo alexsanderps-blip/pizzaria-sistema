@@ -10,6 +10,10 @@ const sqlite3 = require('sqlite3');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
+
+let db;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -56,6 +60,12 @@ const URL_BASE = `http://${LOCAL_IP}:${PORT}`;
 let db;
 
 async function initDatabase() {
+    const dbDir = path.join(__dirname, 'database');
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+        console.log('📁 Pasta database/ criada');
+    }
+    
     db = await open({
         filename: './database/pizzaria.db',
         driver: sqlite3.Database
