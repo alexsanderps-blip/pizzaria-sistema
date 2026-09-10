@@ -1043,18 +1043,18 @@
         // ============================================
         function processarComando(texto) {
             const lower = texto.toLowerCase().trim();
-            if (lower === 'cardápio' || lower === 'cardapio' || lower === 'menu') { mostrarCardapio(); return true; }
-            if (lower === 'carrinho' || lower === 'ver carrinho') { mostrarCarrinho(); return true; }
-            if (lower === 'pagar' || lower === 'finalizar') {
+            if (lower === 'cardápio' || lower === 'cardápio.' || lower === 'cardapio' || lower === 'menu') { mostrarCardapio(); return true; }
+            if (lower === 'carrinho.' || lower === 'carrinho' || lower === 'ver carrinho') { mostrarCarrinho(); return true; }
+            if (lower === 'pagar' || lower === 'pagar.' || lower === 'finalizar') {
                 if (estado.carrinho.length === 0) { adicionarMensagem('gemini', '❌ Carrinho vazio!'); return true; }
                 iniciarPagamento(); return true;
             }
-            if (lower === 'limpar carrinho') { estado.carrinho = []; adicionarMensagem('gemini', '🗑️ Carrinho esvaziado!'); return true; }
-            if (lower === 'novo pedido' || lower === 'recomeçar') { reiniciarPedido(); return true; }
+            if (lower === 'limpar carrinho' || lower === 'limpar carrinho.') { estado.carrinho = []; adicionarMensagem('gemini', '🗑️ Carrinho esvaziado!'); return true; }
+            if (lower === 'novo pedido' || lower === 'recomeçar' || lower === 'novo pedido.' || lower === 'recomeçar.') { reiniciarPedido(); return true; }
             if (estado.etapa === 'pagamento') return processarPagamento(texto);
-            if (estado.etapa === 'pix') return processarPix(texto);
+            if (estado.etapa === 'pix' || estado.etapa === 'pix.') return processarPix(texto);
             if (estado.etapa === 'pix_confirmacao') {
-                if (lower === 'pago' || lower === 'confirmo' || lower === 'sim') { confirmarPixPago(); return true; }
+                if (lower === 'pago' || lower === 'confirmo' || lower === 'sim' || lower === 'pago.' || lower === 'confirmo.' || lower === 'sim.') { confirmarPixPago(); return true; }
                 return false;
             }
             if (estado.etapa === 'endereco') return processarEndereco(texto);
@@ -1064,7 +1064,7 @@
                 if (lower === 'corrigir') { corrigirEndereco(); return true; }
                 return false;
             }
-            if (estado.etapa === 'status') {
+            if (estado.etapa === 'status' || estado.etapa === 'status.') {
                 if (lower === 'entregue' || lower === 'confirmar') { finalizarEntrega(); return true; }
             }
             return false;
