@@ -913,12 +913,37 @@
             }
         };
 
+        // Converte texto formatado (markdown/emoji) para texto puro para TTS
+        function textoParaTTS(texto) {
+            if (!texto) return '';
+            let t = String(texto);
+            // Remove markdown bold/italic
+            t = t.replace(/\*\*(.+?)\*\*/g, '$1');  // **bold** → bold
+            t = t.replace(/\*(.+?)\*/g, '$1');        // *italic* → italic
+            t = t.replace(/`(.+?)`/g, '$1');          // `code` → code
+            t = t.replace(/\*(.+?)\*/g, '$1');        // *still italic*
+            // Remove emojis (sequências Unicode)
+            t = t.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{2934}]|[\u{2B05}-\u{2B0D}]|[\u{2190}-\u{21FF}]|[\u{25A0}-\u{25FF}]|[\u{2B1B}-\u{2B1C}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{23CF}]|[\u{23E8}]|[\u{23EF}-\u{23F3}]|[\u{25AA}-\u{25AB}]|[\u{25E6}]|[\u{2600}-\u{27BF}]|[\u{FE0F}]/gu, '');
+            // Remove emojis simples (unicode range comum)
+            t = t.replace(/[\u{1F300}-\u{1FAFF}]/gu, '');
+            // Remove backticks e asteriscos soltos
+            t = t.replace(/[*_`#]/g, '');
+            // Remove quebras de linha múltiplas
+            t = t.replace(/\n+/g, ' ');
+            // Remove espaços extras
+            t = t.replace(/\s+/g, ' ').trim();
+            return t;
+        }
+
         async function falarTexto(texto) {
             if (!navigator.mediaDevices?.getUserMedia) return;
+            // Converte para texto puro antes de falar
+            const textoLimpo = textoParaTTS(texto);
+            if (!textoLimpo) return;
             try {
                 // 🔥 BLOQUEIA microfone ANTES de falar
                 bloquearMicrofone();
-                await TTS_API.speak(texto, 0.95);
+                await TTS_API.speak(textoLimpo, 0.95);
             } catch (e) {
                 console.error('[TTS] Erro:', e);
             } finally {
@@ -1091,10 +1116,13 @@
 
         async function falarTexto(texto) {
             if (!navigator.mediaDevices?.getUserMedia) return;
+            // Converte para texto puro antes de falar
+            const textoLimpo = textoParaTTS(texto);
+            if (!textoLimpo) return;
             try {
                 // 🔥 BLOQUEIA microfone ANTES de falar
                 bloquearMicrofone();
-                await TTS.speak(texto, { rate: 0.95, pitch: 1.0 });
+                await TTS.speak(textoLimpo, { rate: 0.95, pitch: 1.0 });
             } catch (e) {
                 console.error('[TTS] Erro:', e);
             } finally {
