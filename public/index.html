@@ -610,7 +610,6 @@
             observer.observe(chatContainer, { childList: true, subtree: true, characterData: true });
         }
 
-
         
         // ============================================
         // 5. BLOQUEIO / DESBLOQUEIO
@@ -960,44 +959,6 @@
         }
 
         // ============================================
-
-// ============================================
-// 🔇 TTS COM GROQ ORPHEUS
-// ============================================
-let audioAtualGroq = null;
-
-async function falarComGroq(texto, voz = VOZ_GROQ.voz, direcao = null) {
-    try {
-        bloquearInput();
-        let textoFinal = texto.trim();
-        if (direcao) textoFinal = `${direcao} ${textoFinal}`;
-        if (textoFinal.length > 200) textoFinal = textoFinal.substring(0, 197) + '...';
-        const response = await fetch(VOZ_GROQ.endpoint, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${GROQ_KEY || GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: VOZ_GROQ.modelo, input: textoFinal, voice: voz, response_format: VOZ_GROQ.formato })
-        });
-        if (!response.ok) { const e = await response.text(); throw new Error(`Groq TTS ${response.status}: ${e}`); }
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        if (audioAtualGroq) { audioAtualGroq.pause(); audioAtualGroq = null; }
-        audioAtualGroq = new Audio(url);
-        audioAtualGroq.onplay = () => { vozIndicador.className = 'voz-indicador falando'; vozIndicador.textContent = `🔊 ${voz}`; };
-        audioAtualGroq.onended = () => { URL.revokeObjectURL(url); audioAtualGroq = null; desbloquearInput(); };
-        audioAtualGroq.onerror = () => { URL.revokeObjectURL(url); audioAtualGroq = null; desbloquearInput(); };
-        await audioAtualGroq.play();
-        console.log('✅ Áudio Groq reproduzido');
-    } catch (e) { console.error('❌ Erro Groq:', e); desbloquearInput(); falarFallbackNavegador(texto); }
-}
-
-// ============================================
-// 🔇 FALLBACK: TTS DO NAVEGADOR
-// ============================================
-function falarFallbackNavegador(texto) {
-    const s = window.speechSynthesis;
-    if (!s) { desbloquearInput(); return; }
-    try { s.cancel(); const u = new SpeechSynthesisUtterance(texto.trim()); u.lang = 'pt-BR'; u.rate = 0.9; u.onended = () => desbloquearInput(); u.onerror = () => desbloquearInput(); s.speak(u); } catch (e) { desbloquearInput(); }
-}
 
 // ============================================
 // 11. FALAR COM GEMINI LIVE (FALLBACK)
