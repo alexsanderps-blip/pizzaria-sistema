@@ -34,3 +34,7 @@ build/
 
 # Arquivos de teste
 teste.html
+
+# Variáveis hardcoded (evita push protegido)
+public/index.html
+!public/index.html

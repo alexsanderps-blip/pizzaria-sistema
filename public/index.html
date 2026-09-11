@@ -866,95 +866,73 @@
         // ============================================
         // 11. FALAR COM GEMINI LIVE
         // ============================================
-        // ============================================
-        // TTS via Web Speech API (Chrome/Edge/Opera)
-        // Vozes pt-BR: pt-BR-FranciscaNeural, pt-BR-AntonioNeural
-        // ============================================
-        const TTS_API = {
-            synth: window.speechSynthesis,
-            voice: null,
+        function falarComGeminiLive(texto) {
+            bloquearInput();
 
-            async init() {
-                await new Promise(resolve => {
-                    if (this.synth.getVoices().length > 0) return resolve();
-                    this.synth.onvoiceschanged = () => resolve();
-                });
-                const voices = this.synth.getVoices();
-                this.voice = voices.find(v =>
-                    v.lang.startsWith('pt-BR') &&
-                    (v.name.includes('Neural') || v.name.includes('Francisca') || v.name.includes('Antonio'))
-                ) || voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt')) ||
-                    voices[0];
-                console.log('[TTS] Voz:', this.voice?.name || 'nenhuma encontrada');
-                return this.voice;
-            },
+            if (!wsConectado) {
+                console.log('⚠️ WebSocket não conectado. Tentando reconectar...');
+                conectarGeminiLive();
+                textoPendente = texto;
 
-            async speak(text, rate = 0.95) {
-                if (!this.voice) await this.init();
-                if (!text || !text.trim()) return;
-                return new Promise((resolve) => {
-                    if (this.synth.speaking) this.synth.cancel();
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.voice = this.voice;
-                    u.rate = rate;
-                    u.pitch = 1.0;
-                    u.lang = 'pt-BR';
-                    u.onstart = () => { estado.estaFalando = true; };
-                    u.onend = () => { estado.estaFalando = false; resolve(); };
-                    u.onerror = () => { estado.estaFalando = false; resolve(); };
-                    this.synth.speak(u);
-                });
-            },
-
-            cancel() {
-                this.synth.cancel();
-                estado.estaFalando = false;
+                let tentativas = 0;
+                const intervalo = setInterval(() => {
+                    tentativas++;
+                    if (setupCompleto && textoPendente) {
+                        clearInterval(intervalo);
+                        const txt = textoPendente;
+                        textoPendente = null;
+                        console.log('📤 Enviando texto após reconexão');
+                        ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                    } else if (tentativas > 20) {
+                        clearInterval(intervalo);
+                        console.error('❌ Timeout aguardando conexão');
+                        textoPendente = null;
+                        desbloquearInput();
+                    }
+                }, 500);
+                return;
             }
-        };
 
-        // Converte texto formatado (markdown/emoji) para texto puro para TTS
-        function textoParaTTS(texto) {
-            if (!texto) return '';
-            let t = String(texto);
-            // Remove markdown bold/italic
-            t = t.replace(/\*\*(.+?)\*\*/g, '$1');  // **bold** → bold
-            t = t.replace(/\*(.+?)\*/g, '$1');        // *italic* → italic
-            t = t.replace(/`(.+?)`/g, '$1');          // `code` → code
-            t = t.replace(/\*(.+?)\*/g, '$1');        // *still italic*
-            // Remove emojis (sequências Unicode)
-            t = t.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{2934}]|[\u{2B05}-\u{2B0D}]|[\u{2190}-\u{21FF}]|[\u{25A0}-\u{25FF}]|[\u{2B1B}-\u{2B1C}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{23CF}]|[\u{23E8}]|[\u{23EF}-\u{23F3}]|[\u{25AA}-\u{25AB}]|[\u{25E6}]|[\u{2600}-\u{27BF}]|[\u{FE0F}]/gu, '');
-            // Remove emojis simples (unicode range comum)
-            t = t.replace(/[\u{1F300}-\u{1FAFF}]/gu, '');
-            // Remove backticks e asteriscos soltos
-            t = t.replace(/[*_`#]/g, '');
-            // Remove quebras de linha múltiplas
-            t = t.replace(/\n+/g, ' ');
-            // Remove espaços extras
-            t = t.replace(/\s+/g, ' ').trim();
-            return t;
-        }
+            if (!setupCompleto) {
+                console.log('⚠️ Setup não completo. Guardando texto pendente...');
+                textoPendente = texto;
 
-        async function falarTexto(texto) {
-            if (!navigator.mediaDevices?.getUserMedia) return;
-            // Converte para texto puro antes de falar
-            const textoLimpo = textoParaTTS(texto);
-            if (!textoLimpo) return;
-            try {
-                // 🔥 BLOQUEIA microfone ANTES de falar
-                bloquearMicrofone();
-                await TTS_API.speak(textoLimpo, 0.95);
-            } catch (e) {
-                console.error('[TTS] Erro:', e);
-            } finally {
-                // 🔥 LIBERA microfone quando termina, com delay anti-eco
-                setTimeout(liberarMicrofone, 300);
+                let tentativas = 0;
+                const intervalo = setInterval(() => {
+                    tentativas++;
+                    if (setupCompleto && textoPendente) {
+                        clearInterval(intervalo);
+                        const txt = textoPendente;
+                        textoPendente = null;
+                        console.log('📤 Enviando texto pendente');
+                        ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                    } else if (tentativas > 20) {
+                        clearInterval(intervalo);
+                        console.error('❌ Timeout aguardando setup');
+                        textoPendente = null;
+                        desbloquearInput();
+                    }
+                }, 500);
+                return;
             }
-        }
 
-        // Substitui falarComGeminiLive pelo TTS local
-        async function falarComGeminiLive(texto) {
-            await falarTexto(texto);
+            console.log('🔊 Enviando para Gemini Live:', texto.substring(0, 100));
+
+            filaAudio = [];
+            reproduzindo = false;
+            if (fonteAtual) {
+                try { fonteAtual.stop(); } catch (e) {}
+                fonteAtual = null;
+            }
+
+            ws.send(JSON.stringify({ realtime_input: { text: texto } }));
+
+            setTimeout(() => {
+                if (estado.estaFalando && filaAudio.length === 0 && !reproduzindo) {
+                    console.log('⚠️ Timeout aguardando áudio');
+                    desbloquearInput();
+                }
+            }, 15000);
         }
 
         // ============================================
@@ -984,155 +962,7 @@
         }
 
         // ============================================
-        // 16. CHAMAR OPENLIVE (substitui Gemini)
-        // ============================================
-        async function chamarOpenLive(mensagem) {
-            if (estado.processando) return;
-            if (estado.estaFalando) return;
-            estado.processando = true;
-            adicionarLoading();
-            try {
-                // Contexto para o LLM do OpenLive
-                const contexto = `
-                Você é o Zé, assistente da Pizzaria do Zé.
-                REGRAS:
-                1. Responda em português, seja simpático e direto.
-                2. Use emojis. Mantenha respostas curtas (máximo 4 frases).
-                3. INTERPRETE QUALQUER COISA que o cliente disser.
-                4. SEMPRE confirme o que o cliente escolheu.
-                CARDÁPIO:
-                ${CARDAPIO.map(p => `${p.id}. ${p.emoji} ${p.nome} - R$ ${p.preco.toFixed(2)}`).join('\n')}
-                STATUS ATUAL:
-                - Etapa: ${estado.etapa}
-                - Carrinho: ${estado.carrinho.length} itens
-                - Total: R$ ${estado.carrinho.reduce((s,i) => s + (i.preco * i.quantidade), 0).toFixed(2)}
-                ${estado.carrinho.length > 0 ? `- Itens: ${estado.carrinho.map(i => `${i.quantidade}x ${i.nome}`).join(', ')}` : '- Carrinho vazio'}
-                MENSAGEM: ${mensagem}
-                RESPONDA DE FORMA ÚTIL E GUIE O CLIENTE.
-                `;
-
-                // Chama o OpenLive via API REST (localhost)
-                const url = 'http://127.0.0.1:8787/v1/agent/run';
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        intent: contexto,
-                        kind: 'internal',
-                        agent_class: 'general',
-                        thought_depth: 'voice',
-                        session_id: 'pizzaria-totem'
-                    })
-                });
-
-                removerLoading();
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                let texto = data.result || '';
-
-                // Se o OpenLive retornou erro do modelo
-                if (data.status === 'error' || data.error) {
-                    throw new Error(data.error?.message || data.result || 'Erro no OpenLive');
-                }
-
-                // Limita o tamanho da resposta
-                if (texto.length > 500) texto = texto.substring(0, 500);
-
-                adicionarMensagem('gemini', texto);
-
-                // 🎤 FALA A RESPOSTA usando Web Speech API (TTS local)
-                if (texto && texto.trim()) {
-                    falarTexto(texto);
-                }
-            } catch (error) {
-                removerLoading();
-                console.error('❌ Erro OpenLive:', error);
-                adicionarMensagem('gemini', '❌ Desculpe, tive um problema. Pode repetir?');
-            }
-            estado.processando = false;
-            atualizarBotoesRapidos();
-        }
-
-        // ============================================
-        // 17. TTS via Web Speech API (Chrome/Edge)
-        // ============================================
-        const TTS = {
-            voice: null,
-            synth: window.speechSynthesis,
-            speaking: false,
-
-            async init() {
-                await new Promise(resolve => {
-                    if (this.synth.getVoices().length > 0) return resolve();
-                    this.synth.onvoiceschanged = () => resolve();
-                });
-
-                const voices = this.synth.getVoices();
-                console.log('[TTS] Vozes:', voices.map(v => v.name).join(', '));
-
-                // Preferir voz neural em português
-                this.voice = voices.find(v =>
-                    v.lang.startsWith('pt-BR') &&
-                    (v.name.includes('Neural') || v.name.includes('Francisca') || v.name.includes('Antonio'))
-                ) || voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt')) ||
-                    voices[0];
-
-                console.log('[TTS] Voz selecionada:', this.voice?.name || 'nenhuma');
-                return this.voice;
-            },
-
-            async speak(text, { rate = 1, pitch = 1 } = {}) {
-                if (!this.voice) await this.init();
-                if (!text || !text.trim()) return;
-
-                return new Promise((resolve) => {
-                    if (this.speaking) this.synth.cancel();
-
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.voice = this.voice;
-                    u.rate = rate;
-                    u.pitch = pitch;
-                    u.lang = 'pt-BR';
-
-                    u.onstart = () => { this.speaking = true; };
-                    u.onend = () => { this.speaking = false; resolve(); };
-                    u.onerror = () => { this.speaking = false; resolve(); };
-
-                    this.synth.speak(u);
-                });
-            },
-
-            cancel() {
-                this.synth.cancel();
-                this.speaking = false;
-            }
-        };
-
-        async function falarTexto(texto) {
-            if (!navigator.mediaDevices?.getUserMedia) return;
-            // Converte para texto puro antes de falar
-            const textoLimpo = textoParaTTS(texto);
-            if (!textoLimpo) return;
-            try {
-                // 🔥 BLOQUEIA microfone ANTES de falar
-                bloquearMicrofone();
-                await TTS.speak(textoLimpo, { rate: 0.95, pitch: 1.0 });
-            } catch (e) {
-                console.error('[TTS] Erro:', e);
-            } finally {
-                // 🔥 LIBERA microfone quando termina, com delay anti-eco
-                setTimeout(liberarMicrofone, 300);
-            }
-        }
-
-        // ============================================
-        // 18. CHAMAR GEMINI (mantido como fallback)
+        // 13. CHAMAR GEMINI (TEXTO via HTTP)
         // ============================================
         async function chamarGemini(mensagem) {
             if (estado.processando) return;
@@ -1172,10 +1002,6 @@
                 const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!texto) throw new Error('Resposta vazia');
                 adicionarMensagem('gemini', texto);
-                // Fallback: TTS via Web Speech
-                if (texto && texto.trim()) {
-                    falarTexto(texto);
-                }
             } catch (error) {
                 removerLoading();
                 console.error('❌ Erro:', error);
@@ -1208,13 +1034,7 @@
                 atualizarBotoesRapidos();
                 return;
             }
-            // Tenta OpenLive primeiro, se não responder usa Gemini
-            try {
-                await chamarOpenLive(textoLimpo);
-            } catch (err) {
-                console.warn('⚠️ OpenLive não responde, usando Gemini como fallback:', err.message);
-                await chamarGemini(textoLimpo);
-            }
+            await chamarGemini(textoLimpo);
             atualizarBotoesRapidos();
         }
 
@@ -1652,28 +1472,6 @@
             vozStatusIcone.textContent = '🎤';
             vozStatusTexto.textContent = 'Voz: Disponível';
             inputUsuario.placeholder = 'Digite seu pedido...';
-            // Limpa o input quando para a escuta
-            inputUsuario.value = '';
-        }
-
-        function bloquearMicrofone() {
-            if (!microfoneAtivo) return;
-            if (estaOuvindo) {
-                pararEscuta();
-            }
-            estado.inputBloqueado = true;
-            inputUsuario.disabled = true;
-            inputUsuario.placeholder = '🔊 Zé está falando... Aguarde...';
-        }
-
-        function liberarMicrofone() {
-            estado.inputBloqueado = false;
-            inputUsuario.disabled = false;
-            inputUsuario.value = '';
-            inputUsuario.placeholder = '🎤 Ouvindo sempre... Fale!';
-            if (microfoneAtivo && !estaOuvindo) {
-                iniciarEscutaContinua();
-            }
         }
 
         // ============================================
