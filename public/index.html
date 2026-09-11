@@ -371,6 +371,34 @@
             .bloqueio-overlay .mensagem { padding: 20px 30px; font-size: 1.2rem; }
             .ativar-overlay h2 { font-size: 1.2rem; }
         }
+
+        /* ===== CARDÁPIO EM CARDS ===== */
+        .cardapio-grid-container { margin-bottom: 20px; }
+        .cardapio-titulo {
+            font-size: 1.3rem; font-weight: 700; color: #fff;
+            margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+            padding-bottom: 12px; border-bottom: 2px solid #30363d;
+        }
+        .cardapio-titulo-icon { font-size: 1.5rem; }
+        .cardapio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .cardapio-voltar { text-align: center; margin-top: 20px; padding: 12px; color: #888; font-size: 0.95rem; cursor: pointer; }
+        .cardapio-voltar:hover { color: #58a6ff; }
+        .cardapio-voltar span { font-weight: 500; }
+        .card-pizza {
+            background: #161b22; border: 2px solid #30363d; border-radius: 16px;
+            overflow: hidden; cursor: pointer; transition: all 0.25s ease; position: relative;
+        }
+        .card-pizza:hover { border-color: #58a6ff; transform: translateY(-4px); box-shadow: 0 12px 32px rgba(88,166,255,0.2); }
+        .card-pizza:focus { outline: none; border-color: #7ee787; box-shadow: 0 0 0 3px rgba(126,231,135,0.3); }
+        .card-image { height: 120px; background: #21262d; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+        .card-image img { width: 100%; height: 100%; object-fit: cover; }
+        .card-image-placeholder { font-size: 4rem; background: #21262d; }
+        .card-nome { font-size: 1.05rem; font-weight: 700; color: #fff; padding: 10px 12px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-descricao { font-size: 0.8rem; color: #888; padding: 0 12px 8px; min-height: 36px; }
+        .card-preco { font-size: 1.15rem; font-weight: 700; color: #58a6ff; padding: 8px 12px 4px; text-align: right; }
+        .card-botao { padding: 10px 12px; background: #21262d; border-top: 1px solid #30363d; display: flex; justify-content: center; }
+        .card-botao span { padding: 6px 16px; background: linear-gradient(135deg,#1f6feb,#238636); color: white; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+
     </style>
 </head>
 <body>
@@ -537,7 +565,37 @@
             }
         }
 
+                // ============================================
+        // G. CONFIGURAÇÕES DE VOZ (Groq + Gemini)
         // ============================================
+        const GROQ_API_KEY = '';
+        const GEMINI_API_KEY = '';
+        const URL_BASE = window.location.origin;
+
+        const VOZ_GROQ = {
+            endpoint: 'https://api.groq.com/openai/v1/audio/speech',
+            modelo: 'canopylabs/orpheus-v1-english',
+            voz: 'autumn',
+            formato: 'wav',
+            tempo_max_chars: 200,
+            key: GROQ_KEY || ''
+        };
+
+        let GROQ_KEY = '';
+        let GEMINI_KEY = '';
+
+        // Busca chaves do servidor se disponível
+        (async () => {
+            try {
+                const resp = await fetch('/api/config');
+                const data = await resp.json();
+                if (data.groqKey) GROQ_KEY = data.groqKey;
+                if (data.geminiKey) GEMINI_KEY = data.geminiKey;
+            } catch (e) {}
+        })();
+
+        // ============================================
+
         // 4. SCROLL AUTOMÁTICO
         // ============================================
         function scrollParaBaixo() {
@@ -631,7 +689,7 @@
             estado.historico.push({ remetente, texto, hora: new Date().toLocaleTimeString() });
 
             if (remetente === 'gemini') {
-                falarComGeminiLive(texto);
+                falarComGroq(texto, VOZ_GROQ.voz);
             }
         }
 
@@ -863,98 +921,154 @@
             }
         }
 
+                // ============================================
+        // 🔇 TTS COM GROQ ORPHEUS
         // ============================================
-        // 11. FALAR COM GEMINI LIVE
-        // ============================================
-        // ============================================
-        // TTS via Web Speech API (Chrome/Edge/Opera)
-        // Vozes pt-BR: pt-BR-FranciscaNeural, pt-BR-AntonioNeural
-        // ============================================
-        const TTS_API = {
-            synth: window.speechSynthesis,
-            voice: null,
+        let audioAtualGroq = null;
 
-            async init() {
-                await new Promise(resolve => {
-                    if (this.synth.getVoices().length > 0) return resolve();
-                    this.synth.onvoiceschanged = () => resolve();
-                });
-                const voices = this.synth.getVoices();
-                this.voice = voices.find(v =>
-                    v.lang.startsWith('pt-BR') &&
-                    (v.name.includes('Neural') || v.name.includes('Francisca') || v.name.includes('Antonio'))
-                ) || voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt')) ||
-                    voices[0];
-                console.log('[TTS] Voz:', this.voice?.name || 'nenhuma encontrada');
-                return this.voice;
-            },
-
-            async speak(text, rate = 0.95) {
-                if (!this.voice) await this.init();
-                if (!text || !text.trim()) return;
-                return new Promise((resolve) => {
-                    if (this.synth.speaking) this.synth.cancel();
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.voice = this.voice;
-                    u.rate = rate;
-                    u.pitch = 1.0;
-                    u.lang = 'pt-BR';
-                    u.onstart = () => { estado.estaFalando = true; };
-                    u.onend = () => { estado.estaFalando = false; resolve(); };
-                    u.onerror = () => { estado.estaFalando = false; resolve(); };
-                    this.synth.speak(u);
-                });
-            },
-
-            cancel() {
-                this.synth.cancel();
-                estado.estaFalando = false;
-            }
-        };
-
-        // Converte texto formatado (markdown/emoji) para texto puro para TTS
-        function textoParaTTS(texto) {
-            if (!texto) return '';
-            let t = String(texto);
-            // Remove markdown bold/italic
-            t = t.replace(/\*\*(.+?)\*\*/g, '$1');  // **bold** → bold
-            t = t.replace(/\*(.+?)\*/g, '$1');        // *italic* → italic
-            t = t.replace(/`(.+?)`/g, '$1');          // `code` → code
-            t = t.replace(/\*(.+?)\*/g, '$1');        // *still italic*
-            // Remove emojis (sequências Unicode)
-            t = t.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2300}-\u{23FF}]|[\u{2B50}]|[\u{2934}]|[\u{2B05}-\u{2B0D}]|[\u{2190}-\u{21FF}]|[\u{25A0}-\u{25FF}]|[\u{2B1B}-\u{2B1C}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23F3}]|[\u{23F8}-\u{23FA}]|[\u{25B6}]|[\u{25C0}]|[\u{25FB}-\u{25FE}]|[\u{23CF}]|[\u{23E8}]|[\u{23EF}-\u{23F3}]|[\u{25AA}-\u{25AB}]|[\u{25E6}]|[\u{2600}-\u{27BF}]|[\u{FE0F}]/gu, '');
-            // Remove emojis simples (unicode range comum)
-            t = t.replace(/[\u{1F300}-\u{1FAFF}]/gu, '');
-            // Remove backticks e asteriscos soltos
-            t = t.replace(/[*_`#]/g, '');
-            // Remove quebras de linha múltiplas
-            t = t.replace(/\n+/g, ' ');
-            // Remove espaços extras
-            t = t.replace(/\s+/g, ' ').trim();
-            return t;
-        }
-
-        async function falarTexto(texto) {
-            if (!navigator.mediaDevices?.getUserMedia) return;
-            // Converte para texto puro antes de falar
-            const textoLimpo = textoParaTTS(texto);
-            if (!textoLimpo) return;
+        async function falarComGroq(texto, voz = VOZ_GROQ.voz, direcao = null) {
             try {
-                // 🔥 BLOQUEIA microfone ANTES de falar
-                bloquearMicrofone();
-                await TTS_API.speak(textoLimpo, 0.95);
-            } catch (e) {
-                console.error('[TTS] Erro:', e);
-            } finally {
-                // 🔥 LIBERA microfone quando termina, com delay anti-eco
-                setTimeout(liberarMicrofone, 300);
-            }
+                bloquearInput();
+                let textoFinal = texto.trim();
+                if (direcao) textoFinal = `${direcao} ${textoFinal}`;
+                if (textoFinal.length > 200) textoFinal = textoFinal.substring(0, 197) + '...';
+                const response = await fetch(VOZ_GROQ.endpoint, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${GROQ_KEY || GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: VOZ_GROQ.modelo, input: textoFinal, voice: voz, response_format: VOZ_GROQ.formato })
+                });
+                if (!response.ok) { const e = await response.text(); throw new Error(`Groq TTS ${response.status}: ${e}`); }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                if (audioAtualGroq) { audioAtualGroq.pause(); audioAtualGroq = null; }
+                audioAtualGroq = new Audio(url);
+                audioAtualGroq.onplay = () => { vozIndicador.className = 'voz-indicador falando'; vozIndicador.textContent = `🔊 ${voz}`; };
+                audioAtualGroq.onended = () => { URL.revokeObjectURL(url); audioAtualGroq = null; desbloquearInput(); };
+                audioAtualGroq.onerror = () => { URL.revokeObjectURL(url); audioAtualGroq = null; desbloquearInput(); };
+                await audioAtualGroq.play();
+                console.log('✅ Áudio Groq reproduzido');
+            } catch (e) { console.error('❌ Erro Groq:', e); desbloquearInput(); falarFallbackNavegador(texto); }
         }
 
-        // Substitui falarComGeminiLive pelo TTS local
-        async function falarComGeminiLive(texto) {
-            await falarTexto(texto);
+        // ============================================
+        // 🔇 FALLBACK: TTS DO NAVEGADOR
+        // ============================================
+        function falarFallbackNavegador(texto) {
+            const s = window.speechSynthesis;
+            if (!s) { desbloquearInput(); return; }
+            try { s.cancel(); const u = new SpeechSynthesisUtterance(texto.trim()); u.lang = 'pt-BR'; u.rate = 0.9; u.onended = () => desbloquearInput(); u.onerror = () => desbloquearInput(); s.speak(u); } catch (e) { desbloquearInput(); }
+        }
+
+        // ============================================
+
+// ============================================
+// 🔇 TTS COM GROQ ORPHEUS
+// ============================================
+let audioAtualGroq = null;
+
+async function falarComGroq(texto, voz = VOZ_GROQ.voz, direcao = null) {
+    try {
+        bloquearInput();
+        let textoFinal = texto.trim();
+        if (direcao) textoFinal = `${direcao} ${textoFinal}`;
+        if (textoFinal.length > 200) textoFinal = textoFinal.substring(0, 197) + '...';
+        const response = await fetch(VOZ_GROQ.endpoint, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${GROQ_KEY || GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: VOZ_GROQ.modelo, input: textoFinal, voice: voz, response_format: VOZ_GROQ.formato })
+        });
+        if (!response.ok) { const e = await response.text(); throw new Error(`Groq TTS ${response.status}: ${e}`); }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        if (audioAtualGroq) { audioAtualGroq.pause(); audioAtualGroq = null; }
+        audioAtualGroq = new Audio(url);
+        audioAtualGroq.onplay = () => { vozIndicador.className = 'voz-indicador falando'; vozIndicador.textContent = `🔊 ${voz}`; };
+        audioAtualGroq.onended = () => { URL.revokeObjectURL(url); audioAtualGroq = null; desbloquearInput(); };
+        audioAtualGroq.onerror = () => { URL.revokeObjectURL(url); audioAtualGroq = null; desbloquearInput(); };
+        await audioAtualGroq.play();
+        console.log('✅ Áudio Groq reproduzido');
+    } catch (e) { console.error('❌ Erro Groq:', e); desbloquearInput(); falarFallbackNavegador(texto); }
+}
+
+// ============================================
+// 🔇 FALLBACK: TTS DO NAVEGADOR
+// ============================================
+function falarFallbackNavegador(texto) {
+    const s = window.speechSynthesis;
+    if (!s) { desbloquearInput(); return; }
+    try { s.cancel(); const u = new SpeechSynthesisUtterance(texto.trim()); u.lang = 'pt-BR'; u.rate = 0.9; u.onended = () => desbloquearInput(); u.onerror = () => desbloquearInput(); s.speak(u); } catch (e) { desbloquearInput(); }
+}
+
+// ============================================
+// 11. FALAR COM GEMINI LIVE (FALLBACK)
+// ============================================
+async function falarComGeminiLive(texto) {
+            bloquearInput();
+
+            if (!wsConectado) {
+                console.log('⚠️ WebSocket não conectado. Tentando reconectar...');
+                conectarGeminiLive();
+                textoPendente = texto;
+
+                let tentativas = 0;
+                const intervalo = setInterval(() => {
+                    tentativas++;
+                    if (setupCompleto && textoPendente) {
+                        clearInterval(intervalo);
+                        const txt = textoPendente;
+                        textoPendente = null;
+                        console.log('📤 Enviando texto após reconexão');
+                        ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                    } else if (tentativas > 20) {
+                        clearInterval(intervalo);
+                        console.error('❌ Timeout aguardando conexão');
+                        textoPendente = null;
+                        desbloquearInput();
+                    }
+                }, 500);
+                return;
+            }
+
+            if (!setupCompleto) {
+                console.log('⚠️ Setup não completo. Guardando texto pendente...');
+                textoPendente = texto;
+
+                let tentativas = 0;
+                const intervalo = setInterval(() => {
+                    tentativas++;
+                    if (setupCompleto && textoPendente) {
+                        clearInterval(intervalo);
+                        const txt = textoPendente;
+                        textoPendente = null;
+                        console.log('📤 Enviando texto pendente');
+                        ws.send(JSON.stringify({ realtime_input: { text: txt } }));
+                    } else if (tentativas > 20) {
+                        clearInterval(intervalo);
+                        console.error('❌ Timeout aguardando setup');
+                        textoPendente = null;
+                        desbloquearInput();
+                    }
+                }, 500);
+                return;
+            }
+
+            console.log('🔊 Enviando para Gemini Live:', texto.substring(0, 100));
+
+            filaAudio = [];
+            reproduzindo = false;
+            if (fonteAtual) {
+                try { fonteAtual.stop(); } catch (e) {}
+                fonteAtual = null;
+            }
+
+            ws.send(JSON.stringify({ realtime_input: { text: texto } }));
+
+            setTimeout(() => {
+                if (estado.estaFalando && filaAudio.length === 0 && !reproduzindo) {
+                    console.log('⚠️ Timeout aguardando áudio');
+                    desbloquearInput();
+                }
+            }, 15000);
         }
 
         // ============================================
@@ -984,155 +1098,7 @@
         }
 
         // ============================================
-        // 16. CHAMAR OPENLIVE (substitui Gemini)
-        // ============================================
-        async function chamarOpenLive(mensagem) {
-            if (estado.processando) return;
-            if (estado.estaFalando) return;
-            estado.processando = true;
-            adicionarLoading();
-            try {
-                // Contexto para o LLM do OpenLive
-                const contexto = `
-                Você é o Zé, assistente da Pizzaria do Zé.
-                REGRAS:
-                1. Responda em português, seja simpático e direto.
-                2. Use emojis. Mantenha respostas curtas (máximo 4 frases).
-                3. INTERPRETE QUALQUER COISA que o cliente disser.
-                4. SEMPRE confirme o que o cliente escolheu.
-                CARDÁPIO:
-                ${CARDAPIO.map(p => `${p.id}. ${p.emoji} ${p.nome} - R$ ${p.preco.toFixed(2)}`).join('\n')}
-                STATUS ATUAL:
-                - Etapa: ${estado.etapa}
-                - Carrinho: ${estado.carrinho.length} itens
-                - Total: R$ ${estado.carrinho.reduce((s,i) => s + (i.preco * i.quantidade), 0).toFixed(2)}
-                ${estado.carrinho.length > 0 ? `- Itens: ${estado.carrinho.map(i => `${i.quantidade}x ${i.nome}`).join(', ')}` : '- Carrinho vazio'}
-                MENSAGEM: ${mensagem}
-                RESPONDA DE FORMA ÚTIL E GUIE O CLIENTE.
-                `;
-
-                // Chama o OpenLive via API REST (localhost)
-                const url = 'http://127.0.0.1:8787/v1/agent/run';
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        intent: contexto,
-                        kind: 'internal',
-                        agent_class: 'general',
-                        thought_depth: 'voice',
-                        session_id: 'pizzaria-totem'
-                    })
-                });
-
-                removerLoading();
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                let texto = data.result || '';
-
-                // Se o OpenLive retornou erro do modelo
-                if (data.status === 'error' || data.error) {
-                    throw new Error(data.error?.message || data.result || 'Erro no OpenLive');
-                }
-
-                // Limita o tamanho da resposta
-                if (texto.length > 500) texto = texto.substring(0, 500);
-
-                adicionarMensagem('gemini', texto);
-
-                // 🎤 FALA A RESPOSTA usando Web Speech API (TTS local)
-                if (texto && texto.trim()) {
-                    falarTexto(texto);
-                }
-            } catch (error) {
-                removerLoading();
-                console.error('❌ Erro OpenLive:', error);
-                adicionarMensagem('gemini', '❌ Desculpe, tive um problema. Pode repetir?');
-            }
-            estado.processando = false;
-            atualizarBotoesRapidos();
-        }
-
-        // ============================================
-        // 17. TTS via Web Speech API (Chrome/Edge)
-        // ============================================
-        const TTS = {
-            voice: null,
-            synth: window.speechSynthesis,
-            speaking: false,
-
-            async init() {
-                await new Promise(resolve => {
-                    if (this.synth.getVoices().length > 0) return resolve();
-                    this.synth.onvoiceschanged = () => resolve();
-                });
-
-                const voices = this.synth.getVoices();
-                console.log('[TTS] Vozes:', voices.map(v => v.name).join(', '));
-
-                // Preferir voz neural em português
-                this.voice = voices.find(v =>
-                    v.lang.startsWith('pt-BR') &&
-                    (v.name.includes('Neural') || v.name.includes('Francisca') || v.name.includes('Antonio'))
-                ) || voices.find(v => v.lang.startsWith('pt-BR')) ||
-                    voices.find(v => v.lang.startsWith('pt')) ||
-                    voices[0];
-
-                console.log('[TTS] Voz selecionada:', this.voice?.name || 'nenhuma');
-                return this.voice;
-            },
-
-            async speak(text, { rate = 1, pitch = 1 } = {}) {
-                if (!this.voice) await this.init();
-                if (!text || !text.trim()) return;
-
-                return new Promise((resolve) => {
-                    if (this.speaking) this.synth.cancel();
-
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.voice = this.voice;
-                    u.rate = rate;
-                    u.pitch = pitch;
-                    u.lang = 'pt-BR';
-
-                    u.onstart = () => { this.speaking = true; };
-                    u.onend = () => { this.speaking = false; resolve(); };
-                    u.onerror = () => { this.speaking = false; resolve(); };
-
-                    this.synth.speak(u);
-                });
-            },
-
-            cancel() {
-                this.synth.cancel();
-                this.speaking = false;
-            }
-        };
-
-        async function falarTexto(texto) {
-            if (!navigator.mediaDevices?.getUserMedia) return;
-            // Converte para texto puro antes de falar
-            const textoLimpo = textoParaTTS(texto);
-            if (!textoLimpo) return;
-            try {
-                // 🔥 BLOQUEIA microfone ANTES de falar
-                bloquearMicrofone();
-                await TTS.speak(textoLimpo, { rate: 0.95, pitch: 1.0 });
-            } catch (e) {
-                console.error('[TTS] Erro:', e);
-            } finally {
-                // 🔥 LIBERA microfone quando termina, com delay anti-eco
-                setTimeout(liberarMicrofone, 300);
-            }
-        }
-
-        // ============================================
-        // 18. CHAMAR GEMINI (mantido como fallback)
+        // 13. CHAMAR GEMINI (TEXTO via HTTP)
         // ============================================
         async function chamarGemini(mensagem) {
             if (estado.processando) return;
@@ -1172,10 +1138,6 @@
                 const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!texto) throw new Error('Resposta vazia');
                 adicionarMensagem('gemini', texto);
-                // Fallback: TTS via Web Speech
-                if (texto && texto.trim()) {
-                    falarTexto(texto);
-                }
             } catch (error) {
                 removerLoading();
                 console.error('❌ Erro:', error);
@@ -1208,13 +1170,7 @@
                 atualizarBotoesRapidos();
                 return;
             }
-            // Tenta OpenLive primeiro, se não responder usa Gemini
-            try {
-                await chamarOpenLive(textoLimpo);
-            } catch (err) {
-                console.warn('⚠️ OpenLive não responde, usando Gemini como fallback:', err.message);
-                await chamarGemini(textoLimpo);
-            }
+            await chamarGemini(textoLimpo);
             atualizarBotoesRapidos();
         }
 
@@ -1254,13 +1210,51 @@
         // 16. FUNÇÕES DO SISTEMA
         // ============================================
         function mostrarCardapio() {
-            const texto = CARDAPIO.map(p =>
-                `**${p.id}.** ${p.emoji} ${p.nome} - R$ ${p.preco.toFixed(2)}\n   ${p.descricao}`
-            ).join('\n\n');
-            adicionarMensagem('gemini', `📋 **Cardápio**\n\n${texto}\n\n💡 Diga: **"1"**, **"item 2"**, **"opção 3"**, **"quatro"**`);
+            // Remove cards antigos
+            const cardsExistentes = document.querySelector('.cardapio-grid-container');
+            if (cardsExistentes) cardsExistentes.remove();
+            const container = document.createElement('div');
+            container.className = 'cardapio-grid-container';
+            const titulo = document.createElement('div');
+            titulo.className = 'cardapio-titulo';
+            titulo.innerHTML = '<span class="cardapio-titulo-icon">📋</span> Nosso Cardápio';
+            container.appendChild(titulo);
+            const grid = document.createElement('div');
+            grid.className = 'cardapio-grid';
+            CARDAPIO.forEach(pizza => {
+                const card = document.createElement('div');
+                card.className = 'card-pizza';
+                card.setAttribute('onclick', `adicionarAoCarrinho(${pizza.id})`);
+                card.setAttribute('tabindex', '0');
+                card.setAttribute('role', 'button');
+                card.setAttribute('aria-label', `${pizza.nome} - R$ ${pizza.preco.toFixed(2)}`);
+                card.innerHTML = `
+                    <div class="card-image">
+                        <img src="${URL_BASE}/images/pizza-${pizza.id}.jpg"
+                             alt="${pizza.nome}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="card-image-placeholder" style="display:none;">${pizza.emoji}</div>
+                    </div>
+                    <div class="card-nome">${pizza.nome}</div>
+                    <div class="card-descricao">${pizza.descricao}</div>
+                    <div class="card-preco">R$ ${pizza.preco.toFixed(2)}</div>
+                    <div class="card-botao" onclick="event.stopPropagation(); adicionarAoCarrinho(${pizza.id})">
+                        <span>➕ Adicionar</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            container.appendChild(grid);
+            const voltarBtn = document.createElement('div');
+            voltarBtn.className = 'cardapio-voltar';
+            voltarBtn.innerHTML = '← <span>Voltar ao início</span>';
+            voltarBtn.onclick = () => { container.remove(); reiniciarPedido(); };
+            container.appendChild(voltarBtn);
+            chatContainer.appendChild(container);
+            scrollParaBaixo();
             estado.etapa = 'cardapio';
             atualizarBotoesRapidos();
-        }
+        }      }
 
         function adicionarAoCarrinho(id) {
             const pizza = CARDAPIO.find(p => p.id === id);
@@ -1652,28 +1646,6 @@
             vozStatusIcone.textContent = '🎤';
             vozStatusTexto.textContent = 'Voz: Disponível';
             inputUsuario.placeholder = 'Digite seu pedido...';
-            // Limpa o input quando para a escuta
-            inputUsuario.value = '';
-        }
-
-        function bloquearMicrofone() {
-            if (!microfoneAtivo) return;
-            if (estaOuvindo) {
-                pararEscuta();
-            }
-            estado.inputBloqueado = true;
-            inputUsuario.disabled = true;
-            inputUsuario.placeholder = '🔊 Zé está falando... Aguarde...';
-        }
-
-        function liberarMicrofone() {
-            estado.inputBloqueado = false;
-            inputUsuario.disabled = false;
-            inputUsuario.value = '';
-            inputUsuario.placeholder = '🎤 Ouvindo sempre... Fale!';
-            if (microfoneAtivo && !estaOuvindo) {
-                iniciarEscutaContinua();
-            }
         }
 
         // ============================================
