@@ -916,10 +916,14 @@
         async function falarTexto(texto) {
             if (!navigator.mediaDevices?.getUserMedia) return;
             try {
+                // 🔥 BLOQUEIA microfone ANTES de falar
+                bloquearMicrofone();
                 await TTS_API.speak(texto, 0.95);
             } catch (e) {
                 console.error('[TTS] Erro:', e);
-                estado.estaFalando = false;
+            } finally {
+                // 🔥 LIBERA microfone quando termina, com delay anti-eco
+                setTimeout(liberarMicrofone, 300);
             }
         }
 
@@ -1086,16 +1090,16 @@
         };
 
         async function falarTexto(texto) {
+            if (!navigator.mediaDevices?.getUserMedia) return;
             try {
-                if (!navigator.mediaDevices?.getUserMedia) {
-                    // TTS não disponivel no brauser
-                    return;
-                }
+                // 🔥 BLOQUEIA microfone ANTES de falar
+                bloquearMicrofone();
                 await TTS.speak(texto, { rate: 0.95, pitch: 1.0 });
-                estado.estaFalando = false;
             } catch (e) {
                 console.error('[TTS] Erro:', e);
-                estado.estaFalando = false;
+            } finally {
+                // 🔥 LIBERA microfone quando termina, com delay anti-eco
+                setTimeout(liberarMicrofone, 300);
             }
         }
 
@@ -1620,6 +1624,28 @@
             vozStatusIcone.textContent = '🎤';
             vozStatusTexto.textContent = 'Voz: Disponível';
             inputUsuario.placeholder = 'Digite seu pedido...';
+            // Limpa o input quando para a escuta
+            inputUsuario.value = '';
+        }
+
+        function bloquearMicrofone() {
+            if (!microfoneAtivo) return;
+            if (estaOuvindo) {
+                pararEscuta();
+            }
+            estado.inputBloqueado = true;
+            inputUsuario.disabled = true;
+            inputUsuario.placeholder = '🔊 Zé está falando... Aguarde...';
+        }
+
+        function liberarMicrofone() {
+            estado.inputBloqueado = false;
+            inputUsuario.disabled = false;
+            inputUsuario.value = '';
+            inputUsuario.placeholder = '🎤 Ouvindo sempre... Fale!';
+            if (microfoneAtivo && !estaOuvindo) {
+                iniciarEscutaContinua();
+            }
         }
 
         // ============================================
